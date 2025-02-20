@@ -5,17 +5,19 @@ import random
 import string
 from uuid import UUID
 
+from pytest import raises
+
 from pyfolioclient import FolioClient
 
 
-def test_users():
+def test_users_positive():
     """Test for the fetching, updating, adding and deleting users"""
     with FolioClient(timeout=30) as folio:
 
         assert isinstance(folio, FolioClient)
 
         # Get all users
-        users = folio.get_all_users()
+        users = folio.get_users()
         assert isinstance(users, list)
         assert len(users) > 0
 
@@ -25,7 +27,7 @@ def test_users():
 
         # Get folio user used for login to the system
         user_name = os.getenv("FOLIO_USER")
-        user_data = folio.get_users_by_query(f"username=={user_name}")
+        user_data = folio.get_users(f"username=={user_name}")
         assert isinstance(user_data, list)
         assert len(user_data) == 1
 
@@ -80,4 +82,12 @@ def test_users():
 
         # Get data for deleted user
         user_data = folio.get_user_by_id(user_id)
-        assert user_data is None
+        assert bool(user_data) is False
+
+
+def test_users_negative():
+    with raises(ValueError):
+        with FolioClient() as folio:
+            assert isinstance(folio, FolioClient)
+            user_data = {}
+            user_data = folio.create_user(user_data)
