@@ -51,7 +51,7 @@ class FolioClient(FolioBaseClient):
             "/users", key="users", query=f"barcode=={barcode}", limit=1
         )
         if isinstance(response, list) and len(response) > 1:
-            raise ValueError("Multiple users found with the same barcode")
+            raise RuntimeError("Multiple users found with the same barcode")
         return response[0] if isinstance(response, list) else {}
 
     def create_user(self, payload: dict) -> dict:
@@ -80,14 +80,14 @@ class FolioClient(FolioBaseClient):
         """Update user by uuid"""
         response = self.put_data(f"/users/{uuid}", payload=payload)
         if isinstance(response, int) and not response == 204:
-            raise ValueError("Failed to update user")
+            raise RuntimeError("Failed to update user")
         return response
 
     def delete_user_by_id(self, uuid: str) -> int:
         """Delete user by uuid"""
         response = self.delete_data(f"/users/{uuid}")
         if response != 204:
-            raise ValueError("Failed to update user")
+            raise RuntimeError("Failed to update user")
         return response
 
     # INSTANCES
