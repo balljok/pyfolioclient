@@ -1,0 +1,23 @@
+[project]
+name = "pyfolioclient"
+version = "0.1.0"
+description = "Client for Folio API"
+license = "MIT"
+readme = "README.md"
+authors = [
+    { name = "Håkan Sundblad", email = "hakan.sundblad@liu.se" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "httpx>=0.28.1",
+    "python-dotenv>=1.0.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]
