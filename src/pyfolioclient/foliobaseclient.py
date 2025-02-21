@@ -5,8 +5,6 @@ and refresing tokens and provides methods for generic GET, POST, PUT and DELETE
 requests.
 """
 
-# TODO: Add async support?
-
 from __future__ import annotations
 
 import json
@@ -17,39 +15,12 @@ import uuid
 from collections.abc import Generator
 from datetime import datetime, timedelta
 from datetime import timezone as tz
-from functools import wraps
 from typing import Optional
 
 from dotenv import load_dotenv
-from httpx import Client, ConnectError, HTTPStatusError, TimeoutException
+from httpx import Client
 
-
-def exception_handler(func):
-    """
-    Decorator for managing exceptions
-    """
-
-    @wraps(func)
-    def wrap(*args, **kwargs):
-        try:
-            response = func(*args, **kwargs)
-            return response
-        except ConnectError as connection_err:
-            logging.error("Connection error: %s", connection_err)
-            raise ConnectionError("Folio seems to be down") from connection_err
-        except TimeoutException as timeout_err:
-            logging.error("Server timeout.")
-            raise TimeoutError("Folio seems to be down") from timeout_err
-        except HTTPStatusError as http_err:
-            logging.error(
-                "HTTP [%s] %s: %s",
-                http_err.response.status_code,
-                http_err.response.content,
-                http_err,
-            )
-            return int(http_err.response.status_code)
-
-    return wrap
+from ._decorators import exception_handler
 
 
 class FolioBaseClient:
@@ -275,15 +246,3 @@ class FolioBaseClient:
         response = self.client.delete(url, timeout=self.timeout)
         response.raise_for_status()
         return int(response.status_code)
-
-
-def main():
-    logging.basicConfig(level=logging.INFO)
-    with FolioBaseClient() as folio:
-        while True:
-            folio.get_data("/users", limit=1)
-            time.sleep(660)
-
-
-if __name__ == "__main__":
-    main()

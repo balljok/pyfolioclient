@@ -1,4 +1,4 @@
-# pyFolioClient
+# pyfolioclient
 
 This package provides a client for interacting with Folio's APIs. 
 
@@ -21,7 +21,7 @@ FolioBaseClient provides core functionality for logging in and out of Folio, and
 * Keeping token alive - only sending password over network when necessary
 * HTTPX client for efficient interaction
 * Implemented as a context manager
-* Exception management
+* Useful exception management
 
 ### Requirements
 

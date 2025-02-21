@@ -72,11 +72,13 @@ class FolioClient(FolioBaseClient):
 
         response = self.post_data("/users", payload=payload)
         if isinstance(response, int):
-            raise ValueError("Failed to create user")
+            raise RuntimeError("Failed to create user")
         # In addition to creating a user, we need to create an empty permissions set
         user_id = response.get("id")
         empty_permissions_set = {"userId": user_id, "permissions": []}
-        self.post_data("/perms/users", payload=empty_permissions_set)
+        perms_response = self.post_data("/perms/users", payload=empty_permissions_set)
+        if isinstance(perms_response, int):
+            raise RuntimeError(f"Failed to create permissions for user {user_id}")
         return response
 
     def update_user_by_id(self, uuid: str, payload: dict) -> dict | int:

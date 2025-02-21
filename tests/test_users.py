@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pytest import raises
 
-from pyfolioclient import FolioClient
+from pyfolioclient import FolioClient, ItemNotFoundError
 
 
 def test_users_positive():
@@ -79,12 +79,13 @@ def test_users_positive():
         assert response == 204
 
         # Get data for deleted user
-        user_data = folio.get_user_by_id(user_id)
-        assert bool(user_data) is False
+        with raises(ItemNotFoundError):
+            folio.get_user_by_id(user_id)
+            # assert bool(user_data) is False
 
 
 def test_users_negative():
     with raises(ValueError):
         with FolioClient() as folio:
             user_data = {}
-            user_data = folio.create_user(user_data)
+            folio.create_user(user_data)
