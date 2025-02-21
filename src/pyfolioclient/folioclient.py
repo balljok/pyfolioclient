@@ -7,6 +7,8 @@ GET /item-storage/items
 
 Please refer to this page to understand the differences:
 https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understanding+Business+Logic+Modules+versus+Storage+Modules
+
+Many get methods use iterators to avoid loading all data at once and risking timeouts or exceptions.
 """
 
 from __future__ import annotations
@@ -102,6 +104,40 @@ class FolioClient(FolioBaseClient):
     # ITEMS
 
     # LOANS
+
+    def get_loans(self, query: str = "") -> list:
+        """Get all loans. Query can be used to filter results."""
+        return list(self.iter_data("/loan-storage/loans", key="loans", query=query))
+
+    def iter_loans(self, query: str = "") -> Generator:
+        """Get all loans, yielding results one by one"""
+        yield from self.iter_data("/loan-storage/loans", key="loans", query=query)
+
+    def get_open_loans_by_due_date(self, start: str, end: str | None = None) -> list:
+        """Get loans with a given due date. Suppors both intervals and single dates"""
+        if end:
+            query = (
+                f"(((dueDate>{start} and dueDate<{end}) "
+                f"or dueDate={start} or dueDate={end}) "
+                "and status.name==Open)"
+            )
+        else:
+            query = f"dueDate={start} and status.name==Open"
+        return list(self.iter_data("/loan-storage/loans", key="loans", query=query))
+
+    def iter_open_loans_by_due_date(
+        self, start: str, end: str | None = None
+    ) -> Generator:
+        """Iterate over loans with a given due date. Supports both intervals and single dates"""
+        if end:
+            query = (
+                f"(((dueDate>{start} and dueDate<{end}) "
+                f"or dueDate={start} or dueDate={end}) "
+                "and status.name==Open)"
+            )
+        else:
+            query = f"dueDate={start} and status.name==Open"
+        yield from self.iter_data("/loan-storage/loans", key="loans", query=query)
 
     # LOCATIONS
 

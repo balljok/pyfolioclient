@@ -2,7 +2,9 @@
 
 import time
 
-from pyfolioclient import FolioBaseClient
+from pytest import raises
+
+from pyfolioclient import BadRequestError, FolioBaseClient
 
 FOLIO_TOKEN_TIMEOUT = 600 + 10  # add 10 second buffer
 
@@ -30,3 +32,10 @@ def test_login():
 #     with FolioBaseClient() as folio:
 #         time.sleep(FOLIO_TOKEN_TIMEOUT)
 #         assert isinstance(folio.get_data("/users", key="users", limit=1), list)
+
+
+def test_bad_request():
+    """Test to ensure that the client raises an error when a bad request is made"""
+    with FolioBaseClient() as folio:
+        with raises(BadRequestError):
+            folio.get_data("/users", query=")")

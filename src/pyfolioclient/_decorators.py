@@ -24,10 +24,10 @@ def exception_handler(func):
             raise TimeoutError("Server timeout") from timeout_err
         except HTTPStatusError as http_err:
             logging.error(
-                "HTTP [%s] %s: %s",
+                "HTTP error [%s]: %s %s",
                 http_err.response.status_code,
-                http_err.response.content,
                 http_err,
+                http_err.response.content,
             )
             if http_err.response.status_code == 400:
                 raise BadRequestError("Bad request/CQL syntax error") from http_err
