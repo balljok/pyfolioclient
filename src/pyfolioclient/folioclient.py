@@ -11,19 +11,22 @@ https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understandin
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Generator
-from uuid import UUID
 
-from pyfolioclient import FolioBaseClient
-
-# from .foliobaseclient import FolioBaseClient
+from .foliobaseclient import FolioBaseClient
 
 
 class FolioClient(FolioBaseClient):
     """
-    FolioClient extends the base client with methods for the most common interactions with Folio.
+    FolioClient contains methods for the most common interactions with Folio.
+    It can be used as is, for inspiration, or simply ignored.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __enter__(self) -> "FolioClient":
+        return self
 
     # USERS
 
@@ -101,14 +104,3 @@ class FolioClient(FolioBaseClient):
     # LOCATIONS
 
     # MISCELLANEOUS
-
-
-def main():
-    logging.basicConfig(level=logging.INFO)
-    with FolioClient() as folio:
-        users = folio.get_users("")
-        print(users)
-
-
-if __name__ == "__main__":
-    main()

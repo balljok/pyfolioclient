@@ -14,8 +14,6 @@ def test_users_positive():
     """Test for the fetching, updating, adding and deleting users"""
     with FolioClient(timeout=30) as folio:
 
-        assert isinstance(folio, FolioClient)
-
         # Get all users
         users = folio.get_users()
         assert isinstance(users, list)
@@ -88,6 +86,5 @@ def test_users_positive():
 def test_users_negative():
     with raises(ValueError):
         with FolioClient() as folio:
-            assert isinstance(folio, FolioClient)
             user_data = {}
             user_data = folio.create_user(user_data)
