@@ -85,6 +85,7 @@ def test_users_positive():
 
 
 def test_users_negative():
+    """Test cases that should raise exceptions"""
     with raises(ValueError):
         with FolioClient() as folio:
             user_data = {}

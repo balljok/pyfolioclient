@@ -175,6 +175,17 @@ class FolioBaseClient:
         query: str = "",
         limit: int = 10,
     ) -> dict | list:
+        """Generic GET wrapper.
+
+        Args:
+            endpoint (str): Folio endpoint
+            key (str, optional): Key that holds endpoint data. Defaults to "".
+            query (str, optional): CQL query. Defaults to "".
+            limit (int, optional): Number of records. Defaults to 10. 0 to exclude from parameters.
+
+        Returns:
+            dict | list: Returns a list if a key is provided, otherwise a dict.
+        """
         self._manage_token()
         url = f"{self.base_url}{endpoint}"
         params = {"query": query} if query else {}
@@ -192,6 +203,22 @@ class FolioBaseClient:
         query: str = "",
         limit: int = 100,
     ) -> Generator:
+        """Generic function to turn GET requests into iterator.
+
+        Args:
+            endpoint (str): Folio endpoint
+            key (str): Key that holds endpoint data.
+            query (str, optional): CQL query. Defaults to "".
+            limit (int, optional): Number of records per call. Defaults to 100.
+
+        Raises:
+            RuntimeError: For iterators, limit cannot be 0.
+
+        Yields:
+            Generator: Yields data one by one
+        """
+        if limit == 0:
+            raise ValueError("Limit cannot be 0 for iterator")
         current_uuid = uuid.UUID(int=0)
         current_query = (
             f"id>{current_uuid} AND ({query}) sortBy id"
@@ -216,6 +243,15 @@ class FolioBaseClient:
 
     @exception_handler
     def post_data(self, endpoint: str, payload: dict) -> dict | int:
+        """Generic POST wrapper.
+
+        Args:
+            endpoint (str): Folio endpoint
+            payload (dict): Payload to send
+
+        Returns:
+            dict | int: Some endpoints return a dict, others return 2XX status codes
+        """
         self._manage_token()
         url = f"{self.base_url}{endpoint}"
         response = self.client.post(url, json=payload, timeout=self.timeout)
@@ -227,6 +263,18 @@ class FolioBaseClient:
 
     @exception_handler
     def put_data(self, endpoint: str, payload: dict) -> dict | int:
+        """Generic PUT wrapper.
+
+        Args:
+            endpoint (str): Folio endpoint
+            payload (dict): Payload to send
+
+        Raises:
+            ValueError: Payload cannot be empty
+
+        Returns:
+            dict | int: Some endpoints return a dict, others return 2XX status codes
+        """
         if not payload:
             raise ValueError("Payload cannot be empty")
         self._manage_token()
@@ -240,6 +288,14 @@ class FolioBaseClient:
 
     @exception_handler
     def delete_data(self, endpoint: str) -> int:
+        """Generic DELETE wrapper.
+
+        Args:
+            endpoint (str): Folio endpoint
+
+        Returns:
+            int: Status code
+        """
         self._manage_token()
         url = f"{self.base_url}{endpoint}"
         response = self.client.delete(url, timeout=self.timeout)
