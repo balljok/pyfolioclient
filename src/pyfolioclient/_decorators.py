@@ -5,7 +5,7 @@ from functools import wraps
 
 from httpx import ConnectError, HTTPStatusError, TimeoutException
 
-from .exceptions import ItemNotFoundError
+from ._exceptions import BadRequestError, ItemNotFoundError
 
 
 def exception_handler(func):
@@ -29,8 +29,11 @@ def exception_handler(func):
                 http_err.response.content,
                 http_err,
             )
+            if http_err.response.status_code == 400:
+                raise BadRequestError("Bad request/CQL syntax error") from http_err
             if http_err.response.status_code == 404:
                 raise ItemNotFoundError("Item not found") from http_err
-            return int(http_err.response.status_code)
+            raise RuntimeError("HTTP error") from http_err
+            # return int(http_err.response.status_code)
 
     return wrap

@@ -8,9 +8,7 @@ requests.
 from __future__ import annotations
 
 import json
-import logging
 import os
-import time
 import uuid
 from collections.abc import Generator
 from datetime import datetime, timedelta
@@ -127,7 +125,8 @@ class FolioBaseClient:
             response_json.get("accessTokenExpiration")
         )
 
-        self.client.headers.update({"x-okapi-token": self.access_token})
+        if self.access_token:
+            self.client.headers.update({"x-okapi-token": self.access_token})
 
     def _adjust_for_buffer(self, expiration: str) -> datetime:
         expiration_dt = datetime.fromisoformat(expiration.replace("Z", "+00:00"))
@@ -175,7 +174,7 @@ class FolioBaseClient:
         key: str = "",
         query: str = "",
         limit: int = 10,
-    ) -> dict | list | int:
+    ) -> dict | list:
         self._manage_token()
         url = f"{self.base_url}{endpoint}"
         params = {"query": query} if query else {}
