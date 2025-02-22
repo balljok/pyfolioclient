@@ -36,6 +36,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import datetime
 
+from ._exceptions import BadRequestError, ItemNotFoundError
 from .foliobaseclient import FolioBaseClient
 
 
@@ -61,13 +62,6 @@ class FolioClient(FolioBaseClient):
 
         Returns:
             list: List of user objects.
-
-        Example:
-            # Get all users
-            users = client.get_users()
-
-            # Get users with specific query
-            users = client.get_users("username==bob*")
         """
         return list(self.iter_data("/users", key="users", query=query))
 
@@ -80,25 +74,39 @@ class FolioClient(FolioBaseClient):
                 which returns all users.
         Yields:
             dict: A dictionary containing user data for each matching user record.
-        Example:
-            >>> folio = FolioClient(...)
-            >>> for user in folio.iter_users("active=true"):
-            ...     print(user['username'])
         """
         yield from self.iter_data("/users", key="users", query=query)
 
     def get_user_by_id(self, uuid: str) -> dict:
-        """Get user by id"""
+        """
+        Retrieves user information by UUID from FOLIO.
+        Args:
+            uuid (str): The UUID of the user to retrieve.
+        Returns:
+            dict: A dictionary containing user information if found, empty dict if not found.
+        """
         response = self.get_data(f"/users/{uuid}", limit=0)
         return response if isinstance(response, dict) else {}
 
     def get_user_bl_by_id(self, uuid: str) -> dict:
-        """Get user by id using business logic API"""
+        """
+        Retrieves user information by UUID from FOLIO using business logic API.
+        Args:
+            uuid (str): The UUID of the user to retrieve.
+        Returns:
+            dict: A dictionary containing user information if found, empty dict if not found.
+        """
         response = self.get_data(f"/bl-users/by-id/{uuid}", limit=0)
         return response if isinstance(response, dict) else {}
 
     def get_user_by_barcode(self, barcode: str) -> dict:
-        """Get user by barcode"""
+        """
+        Retrieves user information by barcode from FOLIO.
+        Args:
+            uuid (str): The barcode of the user to retrieve.
+        Returns:
+            dict: A dictionary containing user information if found, empty dict if not found.
+        """
         response = self.get_data(
             "/users", key="users", query=f"barcode=={barcode}", limit=1
         )
@@ -107,7 +115,23 @@ class FolioClient(FolioBaseClient):
         return response[0] if isinstance(response, list) else {}
 
     def create_user(self, payload: dict) -> dict:
-        """Create user and add an empty permissions set"""
+        """Creates a new user in FOLIO and initializes their permissions.
+        This method creates a new user account in FOLIO and adds an empty permissions set.
+        The user creation requires certain mandatory fields in the payload.
+        Args:
+            payload (dict): A dictionary containing the user information with required fields:
+                - username
+                - patronGroup
+                - personal (dict) containing:
+                    - lastName
+                    - email
+                    - preferredContactTypeId
+        Returns:
+            dict: The response from the user creation API containing the created user's information
+        Raises:
+            ValueError: If any required fields are missing in the payload
+            RuntimeError: If user creation fails or if permission initialization fails
+        """
         # Require the same fields that are required when creating a new user in the Folio UI
         if not (
             "username" in payload
@@ -130,18 +154,44 @@ class FolioClient(FolioBaseClient):
             raise RuntimeError(f"Failed to create permissions for user {user_id}")
         return response
 
-    def update_user_by_id(self, uuid: str, payload: dict) -> dict | int:
-        """Update user by uuid"""
-        response = self.put_data(f"/users/{uuid}", payload=payload)
-        if isinstance(response, int) and not response == 204:
-            raise RuntimeError("Failed to update user")
+    def update_user(self, uuid: str, payload: dict) -> dict | int:
+        """Updates a user in FOLIO.
+        Args:
+            uuid (str): The UUID of the user to update.
+            payload (dict): Dictionary containing the updated user data.
+        Returns:
+            Union[dict, int]: Response from the API containing the updated user data or status code.
+        Raises:
+            BadRequestError: If the payload contains issues.
+            ItemNotFoundError: If the user with the given UUID is not found.
+            RuntimeError: If there is a general failure in updating the user.
+        """
+        try:
+            response = self.put_data(f"/users/{uuid}", payload=payload)
+        except BadRequestError as req_err:
+            raise BadRequestError(f"Failed to update user: {req_err}") from req_err
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"User not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to update user: {run_err}") from run_err
         return response
 
-    def delete_user_by_id(self, uuid: str) -> int:
-        """Delete user by uuid"""
-        response = self.delete_data(f"/users/{uuid}")
-        if response != 204:
-            raise RuntimeError("Failed to update user")
+    def delete_user(self, uuid: str) -> int:
+        """Delete a user from FOLIO.
+        Args:
+            uuid (str): UUID of the user to delete
+        Returns:
+            int: HTTP status code of the delete operation if successful
+        Raises:
+            ItemNotFoundError: If user with given UUID is not found
+            RuntimeError: If deletion operation fails for any other reason
+        """
+        try:
+            response = self.delete_data(f"/users/{uuid}")
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"User not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to delete user: {run_err}") from run_err
         return response
 
     # INSTANCES

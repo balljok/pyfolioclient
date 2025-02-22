@@ -64,7 +64,7 @@ def test_users_positive():
                 "barcode": new_barcode,
             }
         )
-        response = folio.update_user_by_id(user_id, user_data)
+        response = folio.update_user(user_id, user_data)
         assert response == 204
 
         # Get data for the updated user using the business logic API
@@ -75,7 +75,7 @@ def test_users_positive():
         assert user_data.get("barcode") == new_barcode
 
         # Delete the user
-        response = folio.delete_user_by_id(user_id)
+        response = folio.delete_user(user_id)
         assert response == 204
 
         # Get data for deleted user
