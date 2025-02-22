@@ -1,19 +1,40 @@
 """
-Interface for Folio API. This class provides methods to communicate with Folio using API:s
+Interface for Folio API providing comprehensive methods to interact with various FOLIO modules.
 
-Folio provides endoints to both business logic modules and storage modules. For example:
-GET /inventory/items
-GET /item-storage/items
+This class extends FolioBaseClient and implements methods for common FOLIO operations,
+particularly focusing on users, inventory, circulation, and related functionalities. It utilizes
+both business logic and storage module endpoints for different operations.
 
-Please refer to this page to understand the differences:
-https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understanding+Business+Logic+Modules+versus+Storage+Modules
+The client implements iterator patterns for most GET operations to handle large datasets
+efficiently and avoid timeout issues. It provides both direct retrieval methods (get_*)
+and iterator methods (iter_*) for flexibility in data handling.
 
-Many get methods use iterators to avoid loading all data at once and risking timeouts or exceptions.
+Attributes:
+    Inherits all attributes from FolioBaseClient
+
+Usage Example:
+    ```python
+    with FolioClient() as folio:
+        for user in folio.iter_users("active==True"):
+            print(user["username"])
+    ```
+
+Notes:
+    - Methods use iterators to avoid loading all data at once and risking timeouts or exceptions.
+    
+References:
+    Folio provides endoints to both business logic modules and storage modules. For example:
+    GET /inventory/items
+    GET /item-storage/items
+
+    Please refer to this page to understand the differences:
+    https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understanding+Business+Logic+Modules+versus+Storage+Modules
 """
 
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime
 
 from .foliobaseclient import FolioBaseClient
 
@@ -33,11 +54,37 @@ class FolioClient(FolioBaseClient):
     # USERS
 
     def get_users(self, query: str = "") -> list:
-        """Get all users. Query can be used to filter results."""
+        """Get users.
+
+        Args:
+            query (str, optional): CQL query string to filter results.
+
+        Returns:
+            list: List of user objects.
+
+        Example:
+            # Get all users
+            users = client.get_users()
+
+            # Get users with specific query
+            users = client.get_users("username==bob*")
+        """
         return list(self.iter_data("/users", key="users", query=query))
 
     def iter_users(self, query: str = "") -> Generator:
-        """Get all users, yielding results one by one"""
+        """
+        Iterate over users.
+        This method provides a generator to iterate through all users that match the given query.
+        Args:
+            query (str, optional): CQL query string to filter users. Defaults to empty string,
+                which returns all users.
+        Yields:
+            dict: A dictionary containing user data for each matching user record.
+        Example:
+            >>> folio = FolioClient(...)
+            >>> for user in folio.iter_users("active=true"):
+            ...     print(user['username'])
+        """
         yield from self.iter_data("/users", key="users", query=query)
 
     def get_user_by_id(self, uuid: str) -> dict:
@@ -114,7 +161,27 @@ class FolioClient(FolioBaseClient):
         yield from self.iter_data("/loan-storage/loans", key="loans", query=query)
 
     def get_open_loans_by_due_date(self, start: str, end: str | None = None) -> list:
-        """Get loans with a given due date. Suppors both intervals and single dates"""
+        """Get loans with a given due date. Suppors both intervals and single dates.
+
+        Args:
+            start (str): Start date for interval or single date. Format: "YYYY-MM-DD"
+            end (str | None, optional): End date for interval. Format: "YYYY-MM-DD".
+
+        Raises:
+            ValueError: Invalid date format
+            ValueError: Start date cannot be after end date
+
+        Returns:
+            list: Loans with a given due date or within a given interval
+        """
+        try:
+            datetime.strptime(start, "%Y-%m-%d")
+            if end:
+                datetime.strptime(end, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("Invalid date format") from exc
+        if end and start > end:
+            raise ValueError("Start date cannot be after end date")
         if end:
             query = (
                 f"(((dueDate>{start} and dueDate<{end}) "
@@ -128,7 +195,27 @@ class FolioClient(FolioBaseClient):
     def iter_open_loans_by_due_date(
         self, start: str, end: str | None = None
     ) -> Generator:
-        """Iterate over loans with a given due date. Supports both intervals and single dates"""
+        """Yield loans with a given due date. Suppors both intervals and single dates.
+
+        Args:
+            start (str): Start date for interval or single date. Format: "YYYY-MM-DD"
+            end (str | None, optional): End date for interval. Format: "YYYY-MM-DD".
+
+        Raises:
+            ValueError: Invalid date format
+            ValueError: Start date cannot be after end date
+
+        Yields:
+            Generator: Yields one matched loan at a time
+        """
+        try:
+            datetime.strptime(start, "%Y-%m-%d")
+            if end:
+                datetime.strptime(end, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("Invalid date format") from exc
+        if end and start > end:
+            raise ValueError("Start date cannot be after end")
         if end:
             query = (
                 f"(((dueDate>{start} and dueDate<{end}) "

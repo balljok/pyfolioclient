@@ -1,8 +1,47 @@
 """
 Client for Folio API:s
-This is a base client for Folio API:s. It handles logging into Folio, getting
-and refresing tokens and provides methods for generic GET, POST, PUT and DELETE
-requests.
+A base client for Folio API:s. It manages access tokens and provides generic methods for GET,
+POST, PUT and DELETE. It also provides an iterator for GET.
+
+The client requires the following environment variables to be set:
+    - FOLIO_BASE_URL: Base URL of the FOLIO installation
+    - FOLIO_TENANT: Name of the FOLIO tenant
+    - FOLIO_USER: Username for authentication
+    - FOLIO_PASSWORD: Password for authentication
+
+The client handles:
+    - Authentication and token management
+    - Token refresh before expiration
+    - Re-authentication when token expires
+    - Connection persistence
+    - Exception handling through decorators
+    - Resource cleanup through context manager
+
+Features:
+    - Automatic token refresh with configurable buffer time
+    - Persistent connections using httpx Client
+    - Support for all standard HTTP methods (GET, POST, PUT, DELETE)
+    - Iterator implementation for paginated GET requests
+    - Configurable timeout settings
+    - Comprehensive error handling
+
+Example:
+    ```python
+    with FolioBaseClient() as client:
+        # Get data from an endpoint
+        data = client.get_data("/users", "users", query="active=true", limit=10)
+        
+        # Iterate through large datasets
+        for item in client.iter_data("/inventory/items", "items"):
+            process_item(item)
+    ```
+
+Attributes:
+    DEFAULT_TIMEOUT (int): Default timeout for API requests in seconds (60)
+    TOKEN_REFRESH_BUFFER (int): Buffer time before token expiration in seconds (10)
+    REQUIRED_ENV_VARS (list): Required environment variables for client initialization
+
+
 """
 
 from __future__ import annotations
@@ -23,12 +62,57 @@ from ._decorators import exception_handler
 
 class FolioBaseClient:
     """
-    Class providing methods to communicate with Folio using API:s
+    A base client class for interacting with FOLIO API endpoints.
+
+    This class handles token management, authentication, and provides generic methods for API
+    interactions.
+
+    Attributes:
+        DEFAULT_TIMEOUT (int): Default timeout value for API requests in seconds (60)
+        TOKEN_REFRESH_BUFFER (int): Buffer time (seconds) before token expiration (10)
+        REQUIRED_ENV_VARS (list): Required environment variables for FOLIO authentication
+            - FOLIO_BASE_URL: Base URL of the FOLIO instance
+            - FOLIO_TENANT: FOLIO tenant ID
+            - FOLIO_USER: FOLIO username
+            - FOLIO_PASSWORD: FOLIO password
+
+    Usage:
+        ```python
+        with FolioBaseClient() as folio:
+            data = folio.get_data("/some-endpoint")
+        ```
+
+    The client will automatically handle:
+        - Environment variable validation
+        - Authentication and token management
+        - Token refresh before expiration
+        - Connection cleanup
+        - Exception handling for API requests
+
+    Methods:
+        get_data: Fetch data from FOLIO endpoints
+        iter_data: Iterate through paginated FOLIO data
+        post_data: Create new records in FOLIO
+        put_data: Update existing records in FOLIO
+        delete_data: Remove records from FOLIO
+
+    The client uses context management to ensure proper resource cleanup:
+        - Automatically logs out when exiting context
+        - Closes HTTP connections
+        - Handles token refresh and re-authentication
+
+        ValueError: If timeout value is not a positive integer
+        RuntimeError: If required environment variables are missing
+        RuntimeError: If no access token is received during authentication
+        ConnectionError: If connection fails
+        TimeoutError: If server times out
+        BadRequestError: 400 error - possibly due to CQL syntax error
+        ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
+        RuntimeError: For HTTP errors not explicitly handled as properly named exceptions
     """
 
     DEFAULT_TIMEOUT: int = 60
     TOKEN_REFRESH_BUFFER: int = 10
-    MAX_LIMIT: int = 1_000_000_000
     REQUIRED_ENV_VARS = [
         "FOLIO_BASE_URL",
         "FOLIO_TENANT",
@@ -37,7 +121,7 @@ class FolioBaseClient:
     ]
 
     def __init__(self, timeout: int = DEFAULT_TIMEOUT) -> None:
-        if timeout <= 0:
+        if not isinstance(timeout, int) and timeout <= 0:
             raise ValueError("Timeout must be a positive integer")
 
         # Load environment variables
