@@ -80,7 +80,7 @@ with FolioBaseClient() as folio:
 from pyfolioclient import FolioClient, ItemNotFoundError
 
 with FolioClient() as folio:
-    for loan in folio.get_loans("status==Open"):
+    for loan in folio.get_loans("status=Open"):
         print(loan.get("dueDate"))
     
     try:
