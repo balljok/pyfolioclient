@@ -33,8 +33,12 @@ def test_login():
 #         assert isinstance(folio.get_data("/users", key="users", limit=1), list)
 
 
-def test_bad_request():
+def test_bad_requests():
     """Test to ensure that the client raises an error when a bad request is made"""
     with FolioBaseClient() as folio:
         with raises(BadRequestError):
             folio.get_data("/users", query=")")
+
+        with raises(BadRequestError):
+            for user in folio.iter_data("/users", key="users", query=")"):
+                assert user is not None

@@ -58,6 +58,7 @@ from dotenv import load_dotenv
 from httpx import Client
 
 from ._decorators import exception_handler
+from ._exceptions import BadRequestError
 
 
 class FolioBaseClient:
@@ -315,7 +316,6 @@ class FolioBaseClient:
         response.raise_for_status()
         return response.json()[key] if key else response.json()
 
-    @exception_handler
     def iter_data(
         self,
         endpoint: str,
@@ -339,6 +339,7 @@ class FolioBaseClient:
 
         Raises:
             ValueError: If limit is set to 0.
+            BadRequestError: If the query is invalid.
             RuntimeError: If the response format is invalid (not a list).
         """
         if limit == 0:
@@ -349,7 +350,10 @@ class FolioBaseClient:
             if query
             else f"id>{current_uuid} sortBy id"
         )
-        data = self.get_data(endpoint, key, current_query, limit)  # Initialize data
+        try:
+            data = self.get_data(endpoint, key, current_query, limit)  # Initialize data
+        except BadRequestError as req_err:
+            raise BadRequestError(f"Invalid query: {query}") from req_err
         while data:
             if not isinstance(data, list):
                 raise RuntimeError("Invalid response format")
@@ -361,6 +365,7 @@ class FolioBaseClient:
                     if query
                     else f"id>{current_uuid} sortBy id"
                 )
+                # We already caught BadRequestError above, hence no try
                 data = self.get_data(endpoint, key, current_query, limit)
 
     @exception_handler

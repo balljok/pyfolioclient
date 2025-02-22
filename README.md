@@ -1,103 +1,109 @@
 # pyfolioclient
 
-This package provides a client for interacting with Folio's APIs. 
+A Python client for interacting with FOLIO's APIs.
 
-The package requires a .env file with the following parameters:
+## Overview
 
-```
+This package provides a streamlined interface for FOLIO API interactions, requiring minimal setup through environment variables.
+
+## Prerequisites
+
+- Python 3.9+
+- FOLIO Poppy release or newer (token expiry support required)
+- Environment configuration file (.env)
+
+## Configuration
+
+Create a `.env` file with:
+
+```env
 FOLIO_BASE_URL="https://your.folio.instance/okapi"
 FOLIO_TENANT="folio_tenant"
 FOLIO_USER="user_in_folio_with_adequate_permissions"
 FOLIO_PASSWORD="password_for_folio_user"
 ```
 
-## FolioBaseClient
-
-FolioBaseClient provides core functionality for logging in and out of Folio, and keeping the access token alive. It also provides wrappers for GET, POST, PUT and DELETE. Getting large amounts of data is supported through a generator function.
-
-### Features
-
-* Login and logout
-* Keeping token alive - only sending password over network when necessary
-* HTTPX client for efficient interaction
-* Implemented as a context manager
-* Useful exception management
-
-### Requirements
-
-* Python 3.9 or higher
-* Folio Poppy release or higher since it only supports tokens with expiry
-
-## FolioClient
-
-FolioClient extends the base client with methods for the most common interactions with Folio.
-
-* Users
-    * Getting users
-    * Updating user information
-    * Creating new users
-    * Deleting users
-* Inventory
-* Circulation
-
 ## Installation
 
-```
+Choose your preferred installation method:
+
+```bash
 pip install pyfolioclient
-```
-
-or 
-
-```
+# or
 pip3 install pyfolioclient
-```
-
-or 
-
-```
+# or
 uv add pyfolioclient
 ```
 
-## Usage
+## Features
 
 ### FolioBaseClient
 
-```
-from pyfolioclient import FolioBaseClient
+Features:
 
-with FolioBaseClient(timeout=120) as folio:
-    for user in folio.iter_data(query = "username==bob*"):
-        print(user)
-```
-
+- Authentication and token management
+- Re-authentication when token expires
+- Persistent connections using httpx Client
+- Support for all standard HTTP methods (GET, POST, PUT, DELETE)
+- Iterator implementation for paginated GET requests
+- Resource cleanup through context manager
 
 ### FolioClient
 
+Implements useful methods for common operations in FOLIO. Provided for convencience. Focus on:
+
+- Users
+- Inventory
+    - Instances
+    - Holdings
+    - Items
+- Circulation
+    - Loans
+    - Requests
+- Data import
+
+## Usage Examples
+
+### FolioBaseClient
+
+```python
+from pyfolioclient import FolioBaseClient
+
+with FolioBaseClient() as folio:
+    for user in folio.iter_data("/users", key="users", query="username==bob*"):
+        print(user)
 ```
-from pyfolioclient import FolioClient
+
+### FolioClient
+
+```python
+from pyfolioclient import FolioClient, ItemNotFoundError
 
 with FolioClient() as folio:
-    for entry in folio.get_instances_by_query("title==Love*"):
-        print(entry)
+    for loan in folio.get_loans("status==Open"):
+        print(loan.get("dueDate"))
+    
+    try:
+        folio.delete_user_by_id("dcf1fabc-3165-4099-b5e6-aa74f95dee73")
+    except ItemNotFoundError as err:
+        print("No matching user")
 ```
 
-## About Folio API:s
+## FOLIO API Notes
 
-Folio provides endoints to both business logic modules and storage modules. For example:
-/inventory/items
-/item-storage/items
+FOLIO provides two types of endpoints:
+1. Business Logic Modules (`/inventory/items`)
+2. Storage Modules (`/item-storage/items`)
 
-Please refer to this page to understand the differences:
-<https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understanding+Business+Logic+Modules+versus+Storage+Modules>
+For detailed information:
+- [Business vs Storage Modules](https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understanding+Business+Logic+Modules+versus+Storage+Modules)
 
-The query language used is CQL. Please refer to this page for a brief reference:
-<https://github.com/folio-org/raml-module-builder#cql-contextual-query-language>
+FOLIO API endpoints uses the CQL query language. For an introduction refer to:
+- [CQL Query Reference](https://github.com/folio-org/raml-module-builder#cql-contextual-query-language)
 
-Do note that not all parts of a JSON reply from Folio are adressable in queries. 
+Note: Query capabilities may be limited to specific JSON response fields.
 
+## Credits
 
-## Acknowledgement
-
-The code based was initially developed for internal use at Linköping university. However, the following project by Theodor Tolstoy (@fontanka16) has provided inspiration for improvements:
-
-<https://github.com/FOLIO-FSE/FolioClient>
+- Developed at Linköping University
+- Inspired by [FOLIO-FSE/FolioClient](https://github.com/FOLIO-FSE/FolioClient) by Theodor Tolstoy (@fontanka16)

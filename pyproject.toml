@@ -5,7 +5,7 @@ description = "Client for Folio API"
 license = "MIT"
 readme = "README.md"
 authors = [
-    { name = "Håkan Sundblad", email = "hakan.sundblad@liu.se" }
+    { name = "Håkan Sundblad", email = "hakan.sundblad@gmail.com" }
 ]
 requires-python = ">=3.9"
 dependencies = [
