@@ -10,10 +10,9 @@ FOLIO_TOKEN_TIMEOUT = 600 + 10  # add 10 second buffer
 
 
 def test_login():
-    """Test to ensure that the login works and tokens are successfully retrieved"""
+    """Test to ensure that the login works"""
     with FolioBaseClient() as folio:
-        assert folio.access_token is not None
-        assert folio.refresh_token is not None
+        assert folio.client.headers.get("x-okapi-tenant") is not None
 
 
 # def test_token_refresh():

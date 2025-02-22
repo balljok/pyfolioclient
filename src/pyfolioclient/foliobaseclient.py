@@ -108,7 +108,7 @@ class FolioBaseClient:
         TimeoutError: If server times out
         BadRequestError: 400 error - possibly due to CQL syntax error
         ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
-        RuntimeError: For HTTP errors not explicitly handled as properly named exceptions
+        RuntimeError: For HTTP errors not explicitly handled as named exceptions
     """
 
     DEFAULT_TIMEOUT: int = 60
@@ -121,7 +121,7 @@ class FolioBaseClient:
     ]
 
     def __init__(self, timeout: int = DEFAULT_TIMEOUT) -> None:
-        if not isinstance(timeout, int) and timeout <= 0:
+        if timeout <= 0:
             raise ValueError("Timeout must be a positive integer")
 
         # Load environment variables
@@ -131,25 +131,20 @@ class FolioBaseClient:
             raise RuntimeError(
                 f"Missing environment variables: {', '.join(missing_vars)}"
             )
-
-        self.base_url: str = os.getenv("FOLIO_BASE_URL")  # type: ignore
+        self._base_url: str = os.getenv("FOLIO_BASE_URL")  # type: ignore
         self.timeout: int = timeout
-        self.access_token: Optional[str] = None
-        self.refresh_token: Optional[str] = None
-        self.token_expiration: datetime = datetime.now(tz.utc)  # only initialization
-        self.token_expiration_with_buffer: datetime = datetime.now(
+        self._access_token: Optional[str] = None
+        self._refresh_token: Optional[str] = None
+        self._token_expiration: datetime = datetime.now(tz.utc)  # only initialization
+        self._token_expiration_with_buffer: datetime = datetime.now(
             tz.utc
         )  # only initialization
-
-        # Initialize client for persistent connections
         self.client = Client()
         self.client.headers.update(
             {
                 "x-okapi-tenant": os.getenv("FOLIO_TENANT"),
             }  # type: ignore
         )
-
-        # Fetch authentication token
         self._retrieve_token()
 
     def __enter__(self) -> "FolioBaseClient":
@@ -161,10 +156,10 @@ class FolioBaseClient:
             self.client.close()
 
     def __repr__(self) -> str:
-        auth_status = "authenticated" if self.access_token else "not authenticated"
+        auth_status = "authenticated" if self._access_token else "not authenticated"
         return (
             f"<{self.__class__.__name__}("
-            f"folio='{self.base_url}', "
+            f"folio='{self._base_url}', "
             f"tenant='{os.getenv('FOLIO_TENANT')}', "
             f"user='{os.getenv('FOLIO_USER')}', "
             f"status={auth_status}, "
@@ -174,17 +169,38 @@ class FolioBaseClient:
 
     @exception_handler
     def _retrieve_token(self, refresh: bool = False) -> None:
+        """Retrieves or refreshes authentication token for FOLIO API access.
+        This method handles both initial token retrieval and token refresh scenarios. For initial
+        authentication, it uses username/password credentials from environment variables. For
+        refresh, it uses existing refresh and access tokens.
+        Args:
+            refresh (bool, optional): If True, refreshes existing token. If False, performs
+                login/re-login. Defaults to False.
+        Raises:
+            RuntimeError: If no access token is received in response
+            ConnectionError: If connection fails
+            TimeoutError: If server times out
+            RuntimeError: If loging/refresh returns an error status code.
+        Side Effects:
+            - Updates self._access_token with new access token
+            - Updates self._refresh_token with new refresh token
+            - Updates self._token_expiration with token expiration timestamp
+            - Updates self._token_expiration_with_buffer with adjusted expiration time
+            - Updates client headers with new access token
+        Returns:
+            None
+        """
         if refresh:
-            url = f"{self.base_url}/authn/refresh"
+            url = f"{self._base_url}/authn/refresh"
             headers = {
                 "Cookie": (
-                    f"folioRefreshToken={self.refresh_token};"
-                    f"folioAccessToken={self.access_token}"
+                    f"folioRefreshToken={self._refresh_token};"
+                    f"folioAccessToken={self._access_token}"
                 )
             }
             response = self.client.post(url, headers=headers, timeout=self.timeout)
         else:
-            url = f"{self.base_url}/authn/login-with-expiry"
+            url = f"{self._base_url}/authn/login-with-expiry"
             payload = {
                 "username": os.getenv("FOLIO_USER"),
                 "password": os.getenv("FOLIO_PASSWORD"),
@@ -193,61 +209,73 @@ class FolioBaseClient:
             if self.client.headers.get("x-okapi-token"):
                 self.client.headers.pop("x-okapi-token")
             response = self.client.post(url, json=payload, timeout=self.timeout)
-
         response.raise_for_status()
-
         if not response.cookies.get("folioAccessToken"):
             raise RuntimeError("No access token received")
-
         response_json = response.json()
-        self.access_token = response.cookies.get("folioAccessToken")
-        self.refresh_token = response.cookies.get("folioRefreshToken")
-        self.token_expiration = datetime.fromisoformat(
+        self._access_token = response.cookies.get("folioAccessToken")
+        self._refresh_token = response.cookies.get("folioRefreshToken")
+        self._token_expiration = datetime.fromisoformat(
             response_json.get("accessTokenExpiration").replace("Z", "+00:00")
         )
-        self.token_expiration_with_buffer = self._adjust_for_buffer(
+        self._token_expiration_with_buffer = self._adjust_for_buffer(
             response_json.get("accessTokenExpiration")
         )
-
-        if self.access_token:
-            self.client.headers.update({"x-okapi-token": self.access_token})
+        if self._access_token:
+            self.client.headers.update({"x-okapi-token": self._access_token})
 
     def _adjust_for_buffer(self, expiration: str) -> datetime:
-        expiration_dt = datetime.fromisoformat(expiration.replace("Z", "+00:00"))
+        """Adjusts token expiration time by subtracting a buffer period.
 
+        This method takes an ISO format expiration timestamp and subtracts a predefined
+        buffer period to ensure token refresh happens before actual expiration.
+
+            expiration (str): ISO format timestamp string representing token expiration time
+
+        Returns:
+            datetime: Adjusted expiration datetime with buffer period subtracted
+        """
+        expiration_dt = datetime.fromisoformat(expiration.replace("Z", "+00:00"))
         expiration_with_buffer = expiration_dt - timedelta(
             seconds=self.TOKEN_REFRESH_BUFFER
         )
-
         return expiration_with_buffer
 
     def _manage_token(self):
         """
-        Update token if necessary through refresh or re-login
+        Manages authentication token lifecycle.
+        Checks token expiration and either refreshes it or retrieves a new one based on timing:
+        - If current time is within buffer period before expiration, refreshes token
+        - If token has already expired, retrieves new token via fresh login
+        - Otherwise leaves existing token unchanged
+        This internal method is called before API requests to ensure valid authentication.
+        Returns:
+            None
         """
-
         now: datetime = datetime.now(tz.utc)
-
         # If token is about to expire, refresh it
-        if self.token_expiration_with_buffer < now < self.token_expiration:
+        if self._token_expiration_with_buffer < now < self._token_expiration:
             self._retrieve_token(refresh=True)
         # If the token has already expired, login again
-        elif self.token_expiration < now:
+        elif self._token_expiration < now:
             self._retrieve_token()
 
     @exception_handler
     def _logout(self) -> None:
+        """Logs out the authenticated user from FOLIO.
+        Raises:
+            ConnectionError: If connection fails
+            TimeoutError: If server times out
+            RuntimeError: If the logout returns an error status code.
+        """
         self._manage_token()
-
-        url = f"{self.base_url}/authn/logout"
-
+        url = f"{self._base_url}/authn/logout"
         header = {
             "Cookie": (
-                f"folioRefreshToken={self.refresh_token}; "
-                f"folioAccessToken={self.access_token}"
+                f"folioRefreshToken={self._refresh_token}; "
+                f"folioAccessToken={self._access_token}"
             )
         }
-
         response = self.client.post(url, headers=header, timeout=self.timeout)
         response.raise_for_status()
 
@@ -259,19 +287,27 @@ class FolioBaseClient:
         query: str = "",
         limit: int = 10,
     ) -> dict | list:
-        """Generic GET wrapper.
-
+        """
+        Retrieves data from a specified FOLIO endpoint.
         Args:
-            endpoint (str): Folio endpoint
-            key (str, optional): Key that holds endpoint data. Defaults to "".
-            query (str, optional): CQL query. Defaults to "".
-            limit (int, optional): Number of records. Defaults to 10. 0 to exclude from parameters.
-
+            endpoint (str): The API endpoint to query.
+            key (str, optional): JSON key to extract from response. If empty, returns full response.
+            query (str, optional): CQL query string to filter results.
+            limit (int, optional): Maximum number of records to return. Defaults to 10.
         Returns:
-            dict | list: Returns a list if a key is provided, otherwise a dict.
+            Union[dict, list]: Response data, either filtered by key or complete response
+        Raises:
+            ConnectionError: If connection fails
+            TimeoutError: If server times out
+            BadRequestError: 400 error - possibly due to CQL syntax error
+            ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
+            RuntimeError: For HTTP errors not explicitly handled as named exceptions
+        Example:
+            >>> client.get_data("/users", key="users", query="username=test*", limit=5)
+            [{'username': 'test1'}, {'username': 'test2'}]
         """
         self._manage_token()
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         params = {"query": query} if query else {}
         if limit:
             params.update({"limit": str(limit)})
@@ -287,19 +323,23 @@ class FolioBaseClient:
         query: str = "",
         limit: int = 100,
     ) -> Generator:
-        """Generic function to turn GET requests into iterator.
+        """Iterator for paginated data from FOLIO API endpoints.
+
+        This method provides a generator to iterate through paginated data from FOLIO endpoints.
+        It uses UUID-based pagination to fetch records in batches.
 
         Args:
-            endpoint (str): Folio endpoint
-            key (str): Key that holds endpoint data.
-            query (str, optional): CQL query. Defaults to "".
-            limit (int, optional): Number of records per call. Defaults to 100.
-
-        Raises:
-            RuntimeError: For iterators, limit cannot be 0.
+            endpoint (str): The API endpoint to query.
+            key (str): The key in the response that contains the data array.
+            query (str, optional): CQL query string to filter results.
+            limit (int, optional): Number of records to fetch per request. Defaults to 100.
 
         Yields:
-            Generator: Yields data one by one
+            Generator: Individual records from the paginated response.
+
+        Raises:
+            ValueError: If limit is set to 0.
+            RuntimeError: If the response format is invalid (not a list).
         """
         if limit == 0:
             raise ValueError("Limit cannot be 0 for iterator")
@@ -309,9 +349,7 @@ class FolioBaseClient:
             if query
             else f"id>{current_uuid} sortBy id"
         )
-
         data = self.get_data(endpoint, key, current_query, limit)  # Initialize data
-
         while data:
             if not isinstance(data, list):
                 raise RuntimeError("Invalid response format")
@@ -327,17 +365,21 @@ class FolioBaseClient:
 
     @exception_handler
     def post_data(self, endpoint: str, payload: dict) -> dict | int:
-        """Generic POST wrapper.
-
+        """Posts data to a FOLIO endpoint.
         Args:
-            endpoint (str): Folio endpoint
-            payload (dict): Payload to send
-
+            endpoint (str): The API endpoint to post to
+            payload (dict): The data payload to send in the request body
         Returns:
-            dict | int: Some endpoints return a dict, others return 2XX status codes
+            Union[dict, int]: The JSON response from the API if successful and response contains JSON,
+                              or the HTTP status code if response does not contain JSON
+        Raises:
+            ConnectionError: If connection fails
+            TimeoutError: If server times out
+            BadRequestError: 400 error - possibly due to error in payload
+            RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         self._manage_token()
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         response = self.client.post(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
         try:
@@ -347,22 +389,26 @@ class FolioBaseClient:
 
     @exception_handler
     def put_data(self, endpoint: str, payload: dict) -> dict | int:
-        """Generic PUT wrapper.
-
+        """
+        Makes a PUT request to specified FOLIO API endpoint with given payload.
         Args:
-            endpoint (str): Folio endpoint
-            payload (dict): Payload to send
-
-        Raises:
-            ValueError: Payload cannot be empty
-
+            endpoint (str): The API endpoint to send the PUT request to
+            payload (dict): The data to be sent in the request body
         Returns:
-            dict | int: Some endpoints return a dict, others return 2XX status codes
+            Union[dict, int]: The JSON response from the API if successful and response contains JSON,
+                              or the HTTP status code if response body is empty
+        Raises:
+            ValueError: If payload is empty
+            ConnectionError: If connection fails
+            TimeoutError: If server times out
+            BadRequestError: 400 error - possibly due to error in payload
+            ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
+            RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         if not payload:
             raise ValueError("Payload cannot be empty")
         self._manage_token()
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         response = self.client.put(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
         try:
@@ -372,16 +418,22 @@ class FolioBaseClient:
 
     @exception_handler
     def delete_data(self, endpoint: str) -> int:
-        """Generic DELETE wrapper.
-
+        """
+        Performs a DELETE request to the specified endpoint.
         Args:
-            endpoint (str): Folio endpoint
-
+            endpoint (str): The API endpoint to send the DELETE request to.
+                           Will be appended to the base URL.
         Returns:
-            int: Status code
+            int: The HTTP status code of the response.
+        Raises:
+            ConnectionError: If connection fails
+            TimeoutError: If server times out
+            BadRequestError: 400 error - bad request
+            ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
+            RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         self._manage_token()
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         response = self.client.delete(url, timeout=self.timeout)
         response.raise_for_status()
         return int(response.status_code)
