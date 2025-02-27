@@ -1,8 +1,9 @@
 [project]
-name = "pyfolioclient"
+name = "pyfolioclient_hakan.sundblad"
 dynamic = ["version"]
 description = "Httpx client for FOLIO API"
 license = "MIT"
+license-files = ["LICEN[CS]E*"]
 readme = "README.md"
 authors = [
     { name = "Håkan Sundblad", email = "hakan.sundblad@liu.se" }
@@ -10,6 +11,17 @@ authors = [
 requires-python = ">=3.9"
 dependencies = [
     "httpx>=0.28.1",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
 ]
 
 [build-system]
@@ -24,3 +36,7 @@ dev = [
 
 [tool.hatch.version]
 path = "src/pyfolioclient/__version__.py"
+
+[project.urls]
+Homepage = "https://github.com/balljok/pyfolioclient"
+Issues = "https://github.com/balljok/pyfolioclient/issues"
