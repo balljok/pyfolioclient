@@ -4,7 +4,7 @@ A Python client for interacting with FOLIO's APIs.
 
 ## Overview
 
-This package provides a streamlined interface for FOLIO API interactions, requiring minimal setup through environment variables.
+This package provides a streamlined interface for FOLIO API interactions.
 
 ## Prerequisites
 

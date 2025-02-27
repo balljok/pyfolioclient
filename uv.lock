@@ -122,22 +122,22 @@ name = "pyfolioclient"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
-    { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
+    { name = "python-dotenv" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-]
+requires-dist = [{ name = "httpx", specifier = ">=0.28.1" }]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.3.4" }]
+dev = [
+    { name = "pytest", specifier = ">=8.3.4" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+]
 
 [[package]]
 name = "pytest"

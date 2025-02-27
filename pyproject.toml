@@ -10,7 +10,6 @@ authors = [
 requires-python = ">=3.9"
 dependencies = [
     "httpx>=0.28.1",
-    "python-dotenv>=1.0.1",
 ]
 
 [build-system]
@@ -20,6 +19,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "pytest>=8.3.4",
+    "python-dotenv>=1.0.1",
 ]
 
 [tool.hatch.version]
