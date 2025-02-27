@@ -2,26 +2,19 @@
 
 A Python client for interacting with FOLIO's APIs.
 
-## Overview
-
-This package provides a streamlined interface for FOLIO API interactions.
-
 ## Prerequisites
 
 - Python 3.9+
-- FOLIO Poppy release or newer (token expiry support required)
+- FOLIO Poppy release or newer (requires expiring tokens)
 - Environment configuration file (.env)
 
 ## Configuration
 
-Create a `.env` file with:
+The clients requires:
 
-```env
-FOLIO_BASE_URL="https://your.folio.instance/okapi"
-FOLIO_TENANT="folio_tenant"
-FOLIO_USER="user_in_folio_with_adequate_permissions"
-FOLIO_PASSWORD="password_for_folio_user"
-```
+- An URL to the FOLIO OKAPI (e.g. "https://your.folio.instance/okapi")
+- The username of the tenant in FOLIO
+- The username of a user with adequate permissions in FOLIO and the password for the user
 
 ## Installation
 
@@ -106,4 +99,4 @@ Note: Query capabilities may be limited to specific JSON response fields.
 ## Credits
 
 - Developed at Linköping University
-- Inspired by [FOLIO-FSE/FolioClient](https://github.com/FOLIO-FSE/FolioClient) by Theodor Tolstoy (@fontanka16)
+- Inspired by [FOLIO-FSE/FolioClient](https://github.com/FOLIO-FSE/FolioClient) by Theodor Tolstoy [@fontanka16](https://github.com/fontanka16)

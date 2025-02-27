@@ -1,7 +1,7 @@
 [project]
-name = "pyfolioclient_hakan.sundblad"
+name = "pyfolioclient"
 dynamic = ["version"]
-description = "Httpx client for FOLIO API"
+description = "A Python client for interacting with FOLIO's APIs."
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 readme = "README.md"
@@ -14,6 +14,7 @@ dependencies = [
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.9",
@@ -21,6 +22,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 
