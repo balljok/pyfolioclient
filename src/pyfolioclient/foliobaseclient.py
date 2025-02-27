@@ -3,58 +3,31 @@ Client for Folio API:s
 A base client for Folio API:s. It manages access tokens and provides generic methods for GET,
 POST, PUT and DELETE. It also provides an iterator for GET.
 
-The client requires the following environment variables to be set:
-    - FOLIO_BASE_URL: Base URL of the FOLIO installation
-    - FOLIO_TENANT: Name of the FOLIO tenant
-    - FOLIO_USER: Username for authentication
-    - FOLIO_PASSWORD: Password for authentication
-
-The client handles:
-    - Authentication and token management
-    - Token refresh before expiration
-    - Re-authentication when token expires
-    - Connection persistence
-    - Exception handling through decorators
-    - Resource cleanup through context manager
-
-Features:
-    - Automatic token refresh with configurable buffer time
-    - Persistent connections using httpx Client
-    - Support for all standard HTTP methods (GET, POST, PUT, DELETE)
-    - Iterator implementation for paginated GET requests
-    - Configurable timeout settings
-    - Comprehensive error handling
-
 Example:
     ```python
-    with FolioBaseClient() as client:
+    with FolioBaseClient(base_url, tenant, user, password) as client:
         # Get data from an endpoint
-        data = client.get_data("/users", "users", query="active=true", limit=10)
+        data = client.get_data("/users", key="users", query="active=true", limit=10)
         
         # Iterate through large datasets
-        for item in client.iter_data("/inventory/items", "items"):
+        for item in client.iter_data("/inventory/items", key="items"):
             process_item(item)
     ```
 
 Attributes:
     DEFAULT_TIMEOUT (int): Default timeout for API requests in seconds (60)
     TOKEN_REFRESH_BUFFER (int): Buffer time before token expiration in seconds (10)
-    REQUIRED_ENV_VARS (list): Required environment variables for client initialization
-
-
 """
 
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Generator
 from datetime import datetime, timedelta
 from datetime import timezone as tz
 from typing import Optional
 
-from dotenv import load_dotenv
 from httpx import Client
 
 from ._decorators import exception_handler
@@ -71,24 +44,12 @@ class FolioBaseClient:
     Attributes:
         DEFAULT_TIMEOUT (int): Default timeout value for API requests in seconds (60)
         TOKEN_REFRESH_BUFFER (int): Buffer time (seconds) before token expiration (10)
-        REQUIRED_ENV_VARS (list): Required environment variables for FOLIO authentication
-            - FOLIO_BASE_URL: Base URL of the FOLIO instance
-            - FOLIO_TENANT: FOLIO tenant ID
-            - FOLIO_USER: FOLIO username
-            - FOLIO_PASSWORD: FOLIO password
 
     Usage:
         ```python
-        with FolioBaseClient() as folio:
+        with FolioBaseClient(base_url, tenant, user, password) as folio:
             data = folio.get_data("/some-endpoint")
         ```
-
-    The client will automatically handle:
-        - Environment variable validation
-        - Authentication and token management
-        - Token refresh before expiration
-        - Connection cleanup
-        - Exception handling for API requests
 
     Methods:
         get_data: Fetch data from FOLIO endpoints
@@ -97,13 +58,8 @@ class FolioBaseClient:
         put_data: Update existing records in FOLIO
         delete_data: Remove records from FOLIO
 
-    The client uses context management to ensure proper resource cleanup:
-        - Automatically logs out when exiting context
-        - Closes HTTP connections
-        - Handles token refresh and re-authentication
-
+    Raises:
         ValueError: If timeout value is not a positive integer
-        RuntimeError: If required environment variables are missing
         RuntimeError: If no access token is received during authentication
         ConnectionError: If connection fails
         TimeoutError: If server times out
@@ -114,25 +70,21 @@ class FolioBaseClient:
 
     DEFAULT_TIMEOUT: int = 60
     TOKEN_REFRESH_BUFFER: int = 10
-    REQUIRED_ENV_VARS = [
-        "FOLIO_BASE_URL",
-        "FOLIO_TENANT",
-        "FOLIO_USER",
-        "FOLIO_PASSWORD",
-    ]
 
-    def __init__(self, timeout: int = DEFAULT_TIMEOUT) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        tenant: str,
+        user: str,
+        password: str,
+        timeout: int = DEFAULT_TIMEOUT,
+    ) -> None:
         if timeout <= 0:
             raise ValueError("Timeout must be a positive integer")
-
-        # Load environment variables
-        load_dotenv()
-        missing_vars = [var for var in self.REQUIRED_ENV_VARS if not os.getenv(var)]
-        if missing_vars:
-            raise RuntimeError(
-                f"Missing environment variables: {', '.join(missing_vars)}"
-            )
-        self._base_url: str = os.getenv("FOLIO_BASE_URL")  # type: ignore
+        self._base_url: str = base_url
+        self._tenant: str = tenant
+        self._user: str = user
+        self._password: str = password
         self.timeout: int = timeout
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
@@ -143,10 +95,15 @@ class FolioBaseClient:
         self.client = Client()
         self.client.headers.update(
             {
-                "x-okapi-tenant": os.getenv("FOLIO_TENANT"),
-            }  # type: ignore
+                "x-okapi-tenant": self._tenant,
+            }
         )
-        self._retrieve_token()
+        try:
+            self._retrieve_token()
+        except RuntimeError as run_err:
+            if hasattr(self, "client") and self.client:
+                self.client.close()
+            raise RuntimeError("Failed to authenticate") from run_err
 
     def __enter__(self) -> "FolioBaseClient":
         return self
@@ -161,8 +118,8 @@ class FolioBaseClient:
         return (
             f"<{self.__class__.__name__}("
             f"folio='{self._base_url}', "
-            f"tenant='{os.getenv('FOLIO_TENANT')}', "
-            f"user='{os.getenv('FOLIO_USER')}', "
+            f"tenant='{self._tenant}', "
+            f"user='{self._user}', "
             f"status={auth_status}, "
             f"timeout={self.timeout})"
             ">"
@@ -203,8 +160,8 @@ class FolioBaseClient:
         else:
             url = f"{self._base_url}/authn/login-with-expiry"
             payload = {
-                "username": os.getenv("FOLIO_USER"),
-                "password": os.getenv("FOLIO_PASSWORD"),
+                "username": self._user,
+                "password": self._password,
             }
             # If re-login after token expiration, remove old token from headers
             if self.client.headers.get("x-okapi-token"):
@@ -375,7 +332,7 @@ class FolioBaseClient:
             endpoint (str): The API endpoint to post to
             payload (dict): The data payload to send in the request body
         Returns:
-            Union[dict, int]: The JSON response from the API if successful and response contains JSON,
+            Union[dict, int]: The JSON response from the API if successful and response is JSON,
                               or the HTTP status code if response does not contain JSON
         Raises:
             ConnectionError: If connection fails
@@ -400,7 +357,7 @@ class FolioBaseClient:
             endpoint (str): The API endpoint to send the PUT request to
             payload (dict): The data to be sent in the request body
         Returns:
-            Union[dict, int]: The JSON response from the API if successful and response contains JSON,
+            Union[dict, int]: The JSON response from the API if successful and response is JSON,
                               or the HTTP status code if response body is empty
         Raises:
             ValueError: If payload is empty

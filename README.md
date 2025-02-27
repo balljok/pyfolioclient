@@ -69,7 +69,7 @@ Implements useful methods for common operations in FOLIO. Provided for convencie
 ```python
 from pyfolioclient import FolioBaseClient
 
-with FolioBaseClient() as folio:
+with FolioBaseClient(base_url, tenant, user, password) as folio:
     for user in folio.iter_data("/users", key="users", query="username==bob*"):
         print(user)
 ```
@@ -79,7 +79,7 @@ with FolioBaseClient() as folio:
 ```python
 from pyfolioclient import FolioClient, ItemNotFoundError
 
-with FolioClient() as folio:
+with FolioClient(base_url, tenant, user, password) as folio:
     for loan in folio.get_loans("status=Open"):
         print(loan.get("dueDate"))
     

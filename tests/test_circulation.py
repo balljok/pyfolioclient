@@ -1,18 +1,30 @@
 """Tests of client methods related to circulation"""
 
+import os
 from datetime import datetime, timedelta
 
+import pytest
+from dotenv import load_dotenv
 from pytest import raises
 
 from pyfolioclient import FolioClient
+
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+
+load_dotenv()
+FOLIO_BASE_URL = os.environ["FOLIO_BASE_URL"]
+FOLIO_TENANT = os.environ["FOLIO_TENANT"]
+FOLIO_USER = os.environ["FOLIO_USER"]
+FOLIO_PASSWORD = os.environ["FOLIO_PASSWORD"]
 
 NOW = datetime.today().strftime("%Y-%m-%d")
 A_WEEK_FROM_NOW = (datetime.today() + timedelta(days=7)).strftime("%Y-%m-%d")
 
 
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions")
 def test_loans():
     """Test fetching loans"""
-    with FolioClient() as folio:
+    with FolioClient(FOLIO_BASE_URL, FOLIO_TENANT, FOLIO_USER, FOLIO_PASSWORD) as folio:
         # Get loans
         data = folio.get_loans(query="status.name==Open")
         assert isinstance(data, list)

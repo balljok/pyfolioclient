@@ -5,14 +5,27 @@ import random
 import string
 from uuid import UUID
 
+import pytest
+from dotenv import load_dotenv
 from pytest import raises
 
 from pyfolioclient import FolioClient, ItemNotFoundError
 
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
+load_dotenv()
+FOLIO_BASE_URL = os.environ["FOLIO_BASE_URL"]
+FOLIO_TENANT = os.environ["FOLIO_TENANT"]
+FOLIO_USER = os.environ["FOLIO_USER"]
+FOLIO_PASSWORD = os.environ["FOLIO_PASSWORD"]
+
+
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions")
 def test_users_positive():
     """Test for the fetching, updating, adding and deleting users"""
-    with FolioClient(timeout=30) as folio:
+    with FolioClient(
+        FOLIO_BASE_URL, FOLIO_TENANT, FOLIO_USER, FOLIO_PASSWORD, timeout=30
+    ) as folio:
 
         # Get all users
         users = folio.get_users()
@@ -84,9 +97,12 @@ def test_users_positive():
             # assert bool(user_data) is False
 
 
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions")
 def test_users_negative():
     """Test cases that should raise exceptions"""
     with raises(ValueError):
-        with FolioClient() as folio:
+        with FolioClient(
+            FOLIO_BASE_URL, FOLIO_TENANT, FOLIO_USER, FOLIO_PASSWORD
+        ) as folio:
             user_data = {}
             folio.create_user(user_data)
