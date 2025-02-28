@@ -6,7 +6,6 @@ A Python client for interacting with FOLIO's APIs.
 
 - Python 3.9+
 - FOLIO Poppy release or newer (requires expiring tokens)
-- Environment configuration file (.env)
 
 ## Configuration
 
