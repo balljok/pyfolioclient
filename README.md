@@ -63,7 +63,7 @@ Implements useful methods for common operations in FOLIO. Provided for convencie
 from pyfolioclient import FolioBaseClient
 
 with FolioBaseClient(base_url, tenant, user, password) as folio:
-    for user in folio.iter_data("/users", key="users", query="username==bob*"):
+    for user in folio.iter_data("/users", key="users", cql_query="username==bob*"):
         print(user)
 ```
 
@@ -91,7 +91,7 @@ FOLIO provides two types of endpoints:
 For detailed information:
 - [Business vs Storage Modules](https://folio-org.atlassian.net/wiki/spaces/FOLIOtips/pages/5673472/Understanding+Business+Logic+Modules+versus+Storage+Modules)
 
-FOLIO API endpoints uses the CQL query language. For an introduction refer to:
+FOLIO API endpoints can be queried using the CQL query language. For an introduction refer to:
 - [CQL Query Reference](https://github.com/folio-org/raml-module-builder#cql-contextual-query-language)
 
 Note: Query capabilities may be limited to specific JSON response fields.
