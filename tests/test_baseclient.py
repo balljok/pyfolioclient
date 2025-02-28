@@ -57,8 +57,8 @@ def test_bad_requests():
         FOLIO_BASE_URL, FOLIO_TENANT, FOLIO_USER, FOLIO_PASSWORD
     ) as folio:
         with raises(BadRequestError):
-            folio.get_data("/users", query=")")
+            folio.get_data("/users", cql_query=")")
 
         with raises(BadRequestError):
-            for user in folio.iter_data("/users", key="users", query=")"):
+            for user in folio.iter_data("/users", key="users", cql_query=")"):
                 assert user is not None

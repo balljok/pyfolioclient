@@ -54,7 +54,7 @@ class FolioClient(FolioBaseClient):
 
     # USERS
 
-    def get_users(self, query: str = "") -> list:
+    def get_users(self, cql_query: str = "") -> list:
         """Get users.
 
         Args:
@@ -63,9 +63,9 @@ class FolioClient(FolioBaseClient):
         Returns:
             list: List of user objects.
         """
-        return list(self.iter_data("/users", key="users", query=query))
+        return list(self.iter_data("/users", key="users", cql_query=cql_query))
 
-    def iter_users(self, query: str = "") -> Generator:
+    def iter_users(self, cql_query: str = "") -> Generator:
         """
         Iterate over users.
         This method provides a generator to iterate through all users that match the given query.
@@ -75,7 +75,7 @@ class FolioClient(FolioBaseClient):
         Yields:
             dict: A dictionary containing user data for each matching user record.
         """
-        yield from self.iter_data("/users", key="users", query=query)
+        yield from self.iter_data("/users", key="users", cql_query=cql_query)
 
     def get_user_by_id(self, uuid: str) -> dict:
         """
@@ -108,7 +108,7 @@ class FolioClient(FolioBaseClient):
             dict: A dictionary containing user information if found, empty dict if not found.
         """
         response = self.get_data(
-            "/users", key="users", query=f"barcode=={barcode}", limit=1
+            "/users", key="users", cql_query=f"barcode=={barcode}", limit=1
         )
         if isinstance(response, list) and len(response) > 1:
             raise RuntimeError("Multiple users found with the same barcode")
@@ -202,13 +202,17 @@ class FolioClient(FolioBaseClient):
 
     # LOANS
 
-    def get_loans(self, query: str = "") -> list:
+    def get_loans(self, cql_query: str = "") -> list:
         """Get all loans. Query can be used to filter results."""
-        return list(self.iter_data("/loan-storage/loans", key="loans", query=query))
+        return list(
+            self.iter_data("/loan-storage/loans", key="loans", cql_query=cql_query)
+        )
 
-    def iter_loans(self, query: str = "") -> Generator:
+    def iter_loans(self, cql_query: str = "") -> Generator:
         """Get all loans, yielding results one by one"""
-        yield from self.iter_data("/loan-storage/loans", key="loans", query=query)
+        yield from self.iter_data(
+            "/loan-storage/loans", key="loans", cql_query=cql_query
+        )
 
     def get_open_loans_by_due_date(self, start: str, end: str | None = None) -> list:
         """Get loans with a given due date. Suppors both intervals and single dates.
@@ -233,14 +237,16 @@ class FolioClient(FolioBaseClient):
         if end and start > end:
             raise ValueError("Start date cannot be after end date")
         if end:
-            query = (
+            cql_query = (
                 f"(((dueDate>{start} and dueDate<{end}) "
                 f"or dueDate={start} or dueDate={end}) "
                 "and status.name==Open)"
             )
         else:
-            query = f"dueDate={start} and status.name==Open"
-        return list(self.iter_data("/loan-storage/loans", key="loans", query=query))
+            cql_query = f"dueDate={start} and status.name==Open"
+        return list(
+            self.iter_data("/loan-storage/loans", key="loans", cql_query=cql_query)
+        )
 
     def iter_open_loans_by_due_date(
         self, start: str, end: str | None = None
@@ -267,14 +273,16 @@ class FolioClient(FolioBaseClient):
         if end and start > end:
             raise ValueError("Start date cannot be after end")
         if end:
-            query = (
+            cql_query = (
                 f"(((dueDate>{start} and dueDate<{end}) "
                 f"or dueDate={start} or dueDate={end}) "
                 "and status.name==Open)"
             )
         else:
-            query = f"dueDate={start} and status.name==Open"
-        yield from self.iter_data("/loan-storage/loans", key="loans", query=query)
+            cql_query = f"dueDate={start} and status.name==Open"
+        yield from self.iter_data(
+            "/loan-storage/loans", key="loans", cql_query=cql_query
+        )
 
     # LOCATIONS
 

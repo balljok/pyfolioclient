@@ -26,11 +26,11 @@ def test_loans():
     """Test fetching loans"""
     with FolioClient(FOLIO_BASE_URL, FOLIO_TENANT, FOLIO_USER, FOLIO_PASSWORD) as folio:
         # Get loans
-        data = folio.get_loans(query="status.name==Open")
+        data = folio.get_loans(cql_query="status.name==Open")
         assert isinstance(data, list)
 
         # Get all loans using generator/iterator
-        for item in folio.iter_loans(query="status.name==Open"):
+        for item in folio.iter_loans(cql_query="status.name==Open"):
             assert isinstance(item, dict)
 
         # Get loans with a given due date

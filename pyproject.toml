@@ -40,6 +40,9 @@ dev = [
 [tool.hatch.version]
 path = "src/pyfolioclient/__version__.py"
 
+[tool.black]
+line-length = 88
+
 [project.urls]
 Homepage = "https://github.com/balljok/pyfolioclient"
 Issues = "https://github.com/balljok/pyfolioclient/issues"

@@ -7,7 +7,7 @@ Example:
     ```python
     with FolioBaseClient(base_url, tenant, user, password) as client:
         # Get data from an endpoint
-        data = client.get_data("/users", key="users", query="active=true", limit=10)
+        data = client.get_data("/users", key="users", cql_query="active=true", limit=10)
         
         # Iterate through large datasets
         for item in client.iter_data("/inventory/items", key="items"):
@@ -242,16 +242,18 @@ class FolioBaseClient:
         self,
         endpoint: str,
         key: str = "",
-        query: str = "",
+        params: dict | None = None,
+        cql_query: str = "",
         limit: int = 10,
     ) -> dict | list:
         """
         Retrieves data from a specified FOLIO endpoint.
         Args:
-            endpoint (str): The API endpoint to query.
+            endpoint (str): The API endpoint.
             key (str, optional): JSON key to extract from response. If empty, returns full response.
-            query (str, optional): CQL query string to filter results.
-            limit (int, optional): Maximum number of records to return. Defaults to 10.
+            params (dict, optional): Additional query parameters to include in the request.
+            cql_query (str, optional): CQL query string to filter results.
+            limit (int, optional): Number of records to return. Defaults to 10. 0 excludes parameter.
         Returns:
             Union[dict, list]: Response data, either filtered by key or complete response
         Raises:
@@ -260,13 +262,13 @@ class FolioBaseClient:
             BadRequestError: 400 error - possibly due to CQL syntax error
             ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
             RuntimeError: For HTTP errors not explicitly handled as named exceptions
-        Example:
-            >>> client.get_data("/users", key="users", query="username=test*", limit=5)
-            [{'username': 'test1'}, {'username': 'test2'}]
         """
         self._manage_token()
         url = f"{self._base_url}{endpoint}"
-        params = {"query": query} if query else {}
+        if not params:
+            params = {}
+        if cql_query:
+            params.update({"query": cql_query})
         if limit:
             params.update({"limit": str(limit)})
         response = self.client.get(url, params=params, timeout=self.timeout)
@@ -277,18 +279,19 @@ class FolioBaseClient:
         self,
         endpoint: str,
         key: str,
-        query: str = "",
+        cql_query: str = "",
         limit: int = 100,
     ) -> Generator:
         """Iterator for paginated data from FOLIO API endpoints.
 
         This method provides a generator to iterate through paginated data from FOLIO endpoints.
-        It uses UUID-based pagination to fetch records in batches.
+        It uses UUID-based pagination to fetch records in batches. Only supports CQL queries and
+        limit as parameters.
 
         Args:
-            endpoint (str): The API endpoint to query.
+            endpoint (str): The API endpoint.
             key (str): The key in the response that contains the data array.
-            query (str, optional): CQL query string to filter results.
+            cql_query (str, optional): CQL query string to filter results.
             limit (int, optional): Number of records to fetch per request. Defaults to 100.
 
         Yields:
@@ -303,14 +306,16 @@ class FolioBaseClient:
             raise ValueError("Limit cannot be 0 for iterator")
         current_uuid = uuid.UUID(int=0)
         current_query = (
-            f"id>{current_uuid} AND ({query}) sortBy id"
-            if query
+            f"id>{current_uuid} AND ({cql_query}) sortBy id"
+            if cql_query
             else f"id>{current_uuid} sortBy id"
         )
         try:
-            data = self.get_data(endpoint, key, current_query, limit)  # Initialize data
+            data = self.get_data(
+                endpoint, key=key, cql_query=current_query, limit=limit
+            )  # Initialize data
         except BadRequestError as req_err:
-            raise BadRequestError(f"Invalid query: {query}") from req_err
+            raise BadRequestError(f"Invalid query: {cql_query}") from req_err
         while data:
             if not isinstance(data, list):
                 raise RuntimeError("Invalid response format")
@@ -318,19 +323,24 @@ class FolioBaseClient:
             current_uuid = data[-1].get("id")
             if current_uuid:
                 current_query = (
-                    f"id>{current_uuid} AND ({query}) sortBy id"
-                    if query
+                    f"id>{current_uuid} AND ({cql_query}) sortBy id"
+                    if cql_query
                     else f"id>{current_uuid} sortBy id"
                 )
                 # We already caught BadRequestError above, hence no try
-                data = self.get_data(endpoint, key, current_query, limit)
+                data = self.get_data(
+                    endpoint, key=key, cql_query=current_query, limit=limit
+                )
 
     @exception_handler
-    def post_data(self, endpoint: str, payload: dict) -> dict | int:
+    def post_data(
+        self, endpoint: str, payload: dict, params: dict | None = None
+    ) -> dict | int:
         """Posts data to a FOLIO endpoint.
         Args:
             endpoint (str): The API endpoint to post to
             payload (dict): The data payload to send in the request body
+            params (dict, optional): Parameters to include in the request.
         Returns:
             Union[dict, int]: The JSON response from the API if successful and response is JSON,
                               or the HTTP status code if response does not contain JSON
@@ -342,7 +352,9 @@ class FolioBaseClient:
         """
         self._manage_token()
         url = f"{self._base_url}{endpoint}"
-        response = self.client.post(url, json=payload, timeout=self.timeout)
+        response = self.client.post(
+            url, json=payload, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
         try:
             return response.json()
@@ -350,12 +362,15 @@ class FolioBaseClient:
             return int(response.status_code)
 
     @exception_handler
-    def put_data(self, endpoint: str, payload: dict) -> dict | int:
+    def put_data(
+        self, endpoint: str, payload: dict, params: dict | None = None
+    ) -> dict | int:
         """
         Makes a PUT request to specified FOLIO API endpoint with given payload.
         Args:
             endpoint (str): The API endpoint to send the PUT request to
             payload (dict): The data to be sent in the request body
+            params (dict, optional): Parameters to include in the request
         Returns:
             Union[dict, int]: The JSON response from the API if successful and response is JSON,
                               or the HTTP status code if response body is empty
@@ -371,7 +386,9 @@ class FolioBaseClient:
             raise ValueError("Payload cannot be empty")
         self._manage_token()
         url = f"{self._base_url}{endpoint}"
-        response = self.client.put(url, json=payload, timeout=self.timeout)
+        response = self.client.put(
+            url, json=payload, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
         try:
             return response.json()
@@ -379,12 +396,12 @@ class FolioBaseClient:
             return int(response.status_code)
 
     @exception_handler
-    def delete_data(self, endpoint: str) -> int:
+    def delete_data(self, endpoint: str, params: dict | None = None) -> int:
         """
         Performs a DELETE request to the specified endpoint.
         Args:
             endpoint (str): The API endpoint to send the DELETE request to.
-                           Will be appended to the base URL.
+            params (dict, optional): Parameters to include in the request
         Returns:
             int: The HTTP status code of the response.
         Raises:
@@ -396,6 +413,6 @@ class FolioBaseClient:
         """
         self._manage_token()
         url = f"{self._base_url}{endpoint}"
-        response = self.client.delete(url, timeout=self.timeout)
+        response = self.client.delete(url, params=params, timeout=self.timeout)
         response.raise_for_status()
         return int(response.status_code)
