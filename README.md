@@ -12,7 +12,7 @@ A Python client for interacting with FOLIO's APIs.
 
 The clients requires:
 
-- An URL to the FOLIO OKAPI (e.g. "https://your.folio.instance/okapi")
+- An URL to the FOLIO OKAPI (i.e. foliopath/okapi)
 - The username of the tenant in FOLIO
 - The username of a user with adequate permissions in FOLIO and the password for the user
 
