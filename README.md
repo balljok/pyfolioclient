@@ -43,7 +43,7 @@ Features:
 
 ### FolioClient
 
-Implements useful methods for common operations in FOLIO. Provided for convencience. Focus on:
+Extends FolioBaseClient and provides useful methods for common operations in FOLIO. Provided for convencience. Focus on:
 
 - Users
 - Inventory
