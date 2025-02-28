@@ -14,7 +14,7 @@ Attributes:
 
 Usage Example:
     ```python
-    with FolioClient() as folio:
+    with FolioClient(base_url, tenant, user, password) as folio:
         for user in folio.iter_users("active==True"):
             print(user["username"])
     ```
