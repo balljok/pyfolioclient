@@ -221,6 +221,48 @@ class FolioClient(FolioBaseClient):
         response = self.get_data(f"/instance-storage/instances/{uuid}", limit=0)
         return response if isinstance(response, dict) else {}
 
+    def update_instance(self, uuid: str, payload: dict) -> dict | int:
+        """Updates an instance in FOLIO.
+        Args:
+            uuid (str): The UUID of the instance to update.
+            payload (dict): Dictionary containing the updated instance data.
+        Returns:
+            Union[dict, int]: Response from the API containing the updated data or status code.
+        Raises:
+            BadRequestError: If the payload contains issues.
+            ItemNotFoundError: If the instance with the given UUID is not found.
+            RuntimeError: If there is a general failure in updating the instance.
+        """
+        try:
+            response = self.put_data(
+                f"/instance-storage/instances/{uuid}", payload=payload
+            )
+        except BadRequestError as req_err:
+            raise BadRequestError(f"Failed to update instance: {req_err}") from req_err
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"Holding not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to update instance: {run_err}") from run_err
+        return response
+
+    def delete_instance(self, uuid: str) -> int:
+        """Delete an instance from FOLIO.
+        Args:
+            uuid (str): UUID of the instance to delete
+        Returns:
+            int: HTTP status code of the delete operation if successful
+        Raises:
+            ItemNotFoundError: If instance with given UUID is not found
+            RuntimeError: If deletion operation fails for any other reason
+        """
+        try:
+            response = self.delete_data(f"/instance-storage/instances/{uuid}")
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"Instance not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to delete instance: {run_err}") from run_err
+        return response
+
     # HOLDINGS
 
     def get_holdings(self, cql_query: str = "") -> list:
@@ -236,6 +278,17 @@ class FolioClient(FolioBaseClient):
         yield from self.iter_data(
             "/holdings-storage/holdings", key="holdingsRecords", cql_query=cql_query
         )
+
+    def get_holding_by_id(self, uuid: str) -> dict:
+        """
+        Retrieves holding information by UUID from FOLIO.
+        Args:
+            uuid (str): The UUID of the holding to retrieve.
+        Returns:
+            dict: A dictionary containing holding information if found, empty dict if not found.
+        """
+        response = self.get_data(f"/holdings-storage/holdings/{uuid}", limit=0)
+        return response if isinstance(response, dict) else {}
 
     def update_holding(self, uuid: str, payload: dict) -> dict | int:
         """Updates a holding in FOLIO.
@@ -261,7 +314,88 @@ class FolioClient(FolioBaseClient):
             raise RuntimeError(f"Failed to update holding: {run_err}") from run_err
         return response
 
+    def delete_holding(self, uuid: str) -> int:
+        """Delete a holding from FOLIO.
+        Args:
+            uuid (str): UUID of the holding to delete
+        Returns:
+            int: HTTP status code of the delete operation if successful
+        Raises:
+            ItemNotFoundError: If holding with given UUID is not found
+            RuntimeError: If deletion operation fails for any other reason
+        """
+        try:
+            response = self.delete_data(f"/holdings-storage/holdings/{uuid}")
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"Holding not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to delete holding: {run_err}") from run_err
+        return response
+
     # ITEMS
+
+    def get_items(self, cql_query: str = "") -> list:
+        """Get all items. Query can be used to filter results."""
+        return list(
+            self.iter_data("/item-storage/items", key="items", cql_query=cql_query)
+        )
+
+    def iter_items(self, cql_query: str = "") -> Generator:
+        """Get all items, yielding results one by one"""
+        yield from self.iter_data(
+            "/item-storage/items", key="items", cql_query=cql_query
+        )
+
+    def get_item_by_id(self, uuid: str) -> dict:
+        """
+        Retrieves item information by UUID from FOLIO.
+        Args:
+            uuid (str): The UUID of the item to retrieve.
+        Returns:
+            dict: A dictionary containing item information if found, empty dict if not found.
+        """
+        response = self.get_data(f"/item-storage/items/{uuid}", limit=0)
+        return response if isinstance(response, dict) else {}
+
+    def update_item(self, uuid: str, payload: dict) -> dict | int:
+        """Updates an item in FOLIO.
+        Args:
+            uuid (str): The UUID of the item to update.
+            payload (dict): Dictionary containing the updated item data.
+        Returns:
+            Union[dict, int]: Response from the API containing the updated data or status code.
+        Raises:
+            BadRequestError: If the payload contains issues.
+            ItemNotFoundError: If the item with the given UUID is not found.
+            RuntimeError: If there is a general failure in updating the item.
+        """
+        try:
+            response = self.put_data(f"/item-storage/items/{uuid}", payload=payload)
+        except BadRequestError as req_err:
+            raise BadRequestError(f"Failed to update item: {req_err}") from req_err
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"Item not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to update item: {run_err}") from run_err
+        return response
+
+    def delete_item(self, uuid: str) -> int:
+        """Delete an item from FOLIO.
+        Args:
+            uuid (str): UUID of the item to delete
+        Returns:
+            int: HTTP status code of the delete operation if successful
+        Raises:
+            ItemNotFoundError: If item with given UUID is not found
+            RuntimeError: If deletion operation fails for any other reason
+        """
+        try:
+            response = self.delete_data(f"/item-storage/items/{uuid}")
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"Instance not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to delete item: {run_err}") from run_err
+        return response
 
     # LOANS
 
@@ -346,6 +480,11 @@ class FolioClient(FolioBaseClient):
         yield from self.iter_data(
             "/loan-storage/loans", key="loans", cql_query=cql_query
         )
+
+    # def renew_loan_by_barcode(self, item_barcode: str, user_barcode: str) -> dict:
+    #     pass
+
+    # REQUESTS
 
     # LOCATIONS
 
