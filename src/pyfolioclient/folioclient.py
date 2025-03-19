@@ -21,7 +21,7 @@ Usage Example:
 
 Notes:
     - Methods use iterators to avoid loading all data at once and risking timeouts or exceptions.
-    
+
 References:
     Folio provides endoints to both business logic modules and storage modules. For example:
     GET /inventory/items
@@ -196,7 +196,70 @@ class FolioClient(FolioBaseClient):
 
     # INSTANCES
 
+    def get_instances(self, cql_query: str = "") -> list:
+        """Get all instances. Query can be used to filter results."""
+        return list(
+            self.iter_data(
+                "/instance-storage/instances", key="instances", cql_query=cql_query
+            )
+        )
+
+    def iter_instances(self, cql_query: str = "") -> Generator:
+        """Get all instances, yielding results one by one"""
+        yield from self.iter_data(
+            "/instance-storage/instances", key="instances", cql_query=cql_query
+        )
+
+    def get_instance_by_id(self, uuid: str) -> dict:
+        """
+        Retrieves instance information by UUID from FOLIO.
+        Args:
+            uuid (str): The UUID of the instance to retrieve.
+        Returns:
+            dict: A dictionary containing instance information if found, empty dict if not found.
+        """
+        response = self.get_data(f"/instance-storage/instances/{uuid}", limit=0)
+        return response if isinstance(response, dict) else {}
+
     # HOLDINGS
+
+    def get_holdings(self, cql_query: str = "") -> list:
+        """Get all holdings. Query can be used to filter results."""
+        return list(
+            self.iter_data(
+                "/holdings-storage/holdings", key="holdingsRecords", cql_query=cql_query
+            )
+        )
+
+    def iter_holdings(self, cql_query: str = "") -> Generator:
+        """Get all holdings, yielding results one by one"""
+        yield from self.iter_data(
+            "/holdings-storage/holdings", key="holdingsRecords", cql_query=cql_query
+        )
+
+    def update_holding(self, uuid: str, payload: dict) -> dict | int:
+        """Updates a holding in FOLIO.
+        Args:
+            uuid (str): The UUID of the holding to update.
+            payload (dict): Dictionary containing the updated holding data.
+        Returns:
+            Union[dict, int]: Response from the API containing the updated data or status code.
+        Raises:
+            BadRequestError: If the payload contains issues.
+            ItemNotFoundError: If the holding with the given UUID is not found.
+            RuntimeError: If there is a general failure in updating the holding.
+        """
+        try:
+            response = self.put_data(
+                f"/holdings-storage/holdings/{uuid}", payload=payload
+            )
+        except BadRequestError as req_err:
+            raise BadRequestError(f"Failed to update holding: {req_err}") from req_err
+        except ItemNotFoundError as item_err:
+            raise ItemNotFoundError(f"Holding not found: {item_err}") from item_err
+        except RuntimeError as run_err:
+            raise RuntimeError(f"Failed to update holding: {run_err}") from run_err
+        return response
 
     # ITEMS
 
@@ -286,4 +349,18 @@ class FolioClient(FolioBaseClient):
 
     # LOCATIONS
 
+    def get_locations(self, cql_query: str = "") -> list:
+        """Get all locations. Query can be used to filter results."""
+        return list(self.iter_data("/locations", key="locations", cql_query=cql_query))
+
     # MISCELLANEOUS
+
+    def get_contributor_name_types(self, cql_query: str = "") -> list:
+        """Get all contributor name types. Query can be used to filter results."""
+        return list(
+            self.iter_data(
+                "/contributor-name-types",
+                key="contributorNameTypes",
+                cql_query=cql_query,
+            )
+        )
