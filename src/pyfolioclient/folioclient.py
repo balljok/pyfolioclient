@@ -133,6 +133,7 @@ class FolioClient(FolioBaseClient):
             RuntimeError: If user creation fails or if permission initialization fails
         """
         # Require the same fields that are required when creating a new user in the Folio UI
+        # API docs (v16.1) for /users does not properly document required fields
         if not (
             "username" in payload
             and "patronGroup" in payload
@@ -231,7 +232,11 @@ class FolioClient(FolioBaseClient):
         Raises:
             RuntimeError: If the instance creation fails.
         """
-        # TODO: Add validation for required fields in payload
+        # Required fields according to API docs (v11.0)
+        if not (
+            "instanceTypeId" in payload and "source" in payload and "title" in payload
+        ):
+            raise ValueError("Required fields missing in payload")
         response = self.post_data("/instance-storage/instances", payload=payload)
         if isinstance(response, int):
             raise RuntimeError("Failed to create instance")
@@ -316,7 +321,9 @@ class FolioClient(FolioBaseClient):
         Raises:
             RuntimeError: If the holding creation fails.
         """
-        # TODO: Add validation for required fields in payload
+        # Required fields according to API docs (v6.0)
+        if not ("instanceId" in payload and "permanentLocationId" in payload):
+            raise ValueError("Required fields missing in payload")
         response = self.post_data("/holdings-storage/holdings", payload=payload)
         if isinstance(response, int):
             raise RuntimeError("Failed to create holding")
@@ -399,7 +406,15 @@ class FolioClient(FolioBaseClient):
         Raises:
             RuntimeError: If the item creation fails.
         """
-        # TODO: Add validation for required fields in payload
+        # Required fields according to API docs (v10.0)
+        if not (
+            "permanentLoanTypeId" in payload
+            and "holdingsRecordId" in payload
+            and "materialTypeId" in payload
+            and "status" in payload
+            and "name" in payload["status"]
+        ):
+            raise ValueError("Required fields missing in payload")
         response = self.post_data("/item-storage/items", payload=payload)
         if isinstance(response, int):
             raise RuntimeError("Failed to create item")
@@ -610,7 +625,17 @@ class FolioClient(FolioBaseClient):
         Raises:
             RuntimeError: If the request creation fails.
         """
-        # TODO: Add validation for required fields in payload
+        # Required fields according to API docs (v5.0)
+        if not (
+            "fulfillmentPreference" in payload
+            and "instanceId" in payload
+            and "requestDate" in payload
+            and "status" in payload
+            and "requestLevel" in payload
+            and "requesterId" in payload
+            and "requestType" in payload
+        ):
+            raise ValueError("Required fields missing in payload")
         response = self.post_data("/request-storage/requests", payload=payload)
         if isinstance(response, int):
             raise RuntimeError("Failed to create request")
