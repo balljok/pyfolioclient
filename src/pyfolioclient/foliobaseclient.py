@@ -8,7 +8,7 @@ Example:
     with FolioBaseClient(base_url, tenant, user, password) as client:
         # Get data from an endpoint
         data = client.get_data("/users", key="users", cql_query="active=true", limit=10)
-        
+
         # Iterate through large datasets
         for item in client.iter_data("/inventory/items", key="items"):
             process_item(item)
@@ -253,7 +253,7 @@ class FolioBaseClient:
             key (str, optional): JSON key to extract from response. If empty, returns full response.
             params (dict, optional): Additional query parameters to include in the request.
             cql_query (str, optional): CQL query string to filter results.
-            limit (int, optional): Number of records to return. Defaults to 10. 0 excludes parameter.
+            limit (int, optional): Number of records to return. Default is 10. 0 excludes parameter.
         Returns:
             Union[dict, list]: Response data, either filtered by key or complete response
         Raises:
