@@ -31,7 +31,7 @@ from typing import Optional
 from httpx import Client
 
 from ._decorators import exception_handler
-from ._exceptions import BadRequestError
+from ._exceptions import BadRequestError, UnprocessableContentError
 
 
 class FolioBaseClient:
@@ -348,6 +348,7 @@ class FolioBaseClient:
             ConnectionError: If connection fails
             TimeoutError: If server times out
             BadRequestError: 400 error - possibly due to error in payload
+            UnprocessableContentError: 422 error - request cannot be performed
             RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         self._manage_token()
@@ -380,6 +381,7 @@ class FolioBaseClient:
             TimeoutError: If server times out
             BadRequestError: 400 error - possibly due to error in payload
             ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
+            UnprocessableContentError: 422 error - request cannot be performed
             RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         if not payload:
