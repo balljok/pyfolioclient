@@ -334,12 +334,12 @@ class FolioBaseClient:
 
     @exception_handler
     def post_data(
-        self, endpoint: str, payload: dict, params: dict | None = None
+        self, endpoint: str, payload: dict | None = None, params: dict | None = None
     ) -> dict | int:
         """Posts data to a FOLIO endpoint.
         Args:
             endpoint (str): The API endpoint to post to
-            payload (dict): The data payload to send in the request body
+            payload (dict, optional): The data payload to send in the request body
             params (dict, optional): Parameters to include in the request.
         Returns:
             Union[dict, int]: The JSON response from the API if successful and response is JSON,
