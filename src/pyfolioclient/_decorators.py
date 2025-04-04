@@ -1,11 +1,11 @@
 """Decorator for managing exceptions in HTTP requests."""
 
-import logging
+import json
 from functools import wraps
 
 from httpx import ConnectError, HTTPStatusError, TimeoutException
 
-from ._exceptions import BadRequestError, ItemNotFoundError
+from ._exceptions import BadRequestError, ItemNotFoundError, UnprocessableContentError
 
 
 def exception_handler(func):
@@ -34,22 +34,29 @@ def exception_handler(func):
             response = func(*args, **kwargs)
             return response
         except ConnectError as connection_err:
-            logging.error("Connection error: %s", connection_err)
             raise ConnectionError("Connection error") from connection_err
         except TimeoutException as timeout_err:
-            logging.error("Server timeout: %s", timeout_err)
             raise TimeoutError("Server timeout") from timeout_err
         except HTTPStatusError as http_err:
-            logging.error(
-                "HTTP error [%s]: %s %s",
-                http_err.response.status_code,
-                http_err,
-                http_err.response.content,
-            )
             if http_err.response.status_code == 400:
                 raise BadRequestError("Bad request/CQL syntax error") from http_err
             if http_err.response.status_code == 404:
                 raise ItemNotFoundError("Item not found") from http_err
+            # In Folio, 422 sometimes contains json and sometimes plain text.
+            # Instead propagating the byte object, we try to decode it.
+            # This is not an elegant solution.
+            if http_err.response.status_code == 422:
+                try:
+                    body_json = json.loads(http_err.response.content.decode("utf-8"))
+                    raise UnprocessableContentError(body_json) from http_err
+                except json.JSONDecodeError:
+                    try:
+                        body_string = http_err.response.content.decode("utf-8")
+                        raise UnprocessableContentError(body_string) from http_err
+                    except (UnicodeDecodeError, AttributeError, TypeError) as err:
+                        raise UnprocessableContentError(
+                            "Unprocessable content"
+                        ) from err
             raise RuntimeError("HTTP error") from http_err
 
     return wrap

@@ -80,6 +80,10 @@ def test_users_positive():
         response = folio.update_user(user_id, user_data)
         assert response == 204
 
+        # Get user by
+        user_data = folio.get_user_by_barcode(new_barcode)
+        assert isinstance(user_data, dict)
+
         # Get data for the updated user using the business logic API
         user_data = folio.get_user_bl_by_id(user_id)
         assert isinstance(user_data, dict)

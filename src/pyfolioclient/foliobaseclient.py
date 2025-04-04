@@ -8,7 +8,7 @@ Example:
     with FolioBaseClient(base_url, tenant, user, password) as client:
         # Get data from an endpoint
         data = client.get_data("/users", key="users", cql_query="active=true", limit=10)
-        
+
         # Iterate through large datasets
         for item in client.iter_data("/inventory/items", key="items"):
             process_item(item)
@@ -31,7 +31,7 @@ from typing import Optional
 from httpx import Client
 
 from ._decorators import exception_handler
-from ._exceptions import BadRequestError
+from ._exceptions import BadRequestError, UnprocessableContentError
 
 
 class FolioBaseClient:
@@ -253,7 +253,7 @@ class FolioBaseClient:
             key (str, optional): JSON key to extract from response. If empty, returns full response.
             params (dict, optional): Additional query parameters to include in the request.
             cql_query (str, optional): CQL query string to filter results.
-            limit (int, optional): Number of records to return. Defaults to 10. 0 excludes parameter.
+            limit (int, optional): Number of records to return. Default is 10. 0 excludes parameter.
         Returns:
             Union[dict, list]: Response data, either filtered by key or complete response
         Raises:
@@ -334,12 +334,12 @@ class FolioBaseClient:
 
     @exception_handler
     def post_data(
-        self, endpoint: str, payload: dict, params: dict | None = None
+        self, endpoint: str, payload: dict | None = None, params: dict | None = None
     ) -> dict | int:
         """Posts data to a FOLIO endpoint.
         Args:
             endpoint (str): The API endpoint to post to
-            payload (dict): The data payload to send in the request body
+            payload (dict, optional): The data payload to send in the request body
             params (dict, optional): Parameters to include in the request.
         Returns:
             Union[dict, int]: The JSON response from the API if successful and response is JSON,
@@ -348,6 +348,7 @@ class FolioBaseClient:
             ConnectionError: If connection fails
             TimeoutError: If server times out
             BadRequestError: 400 error - possibly due to error in payload
+            UnprocessableContentError: 422 error - request cannot be performed
             RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         self._manage_token()
@@ -380,6 +381,7 @@ class FolioBaseClient:
             TimeoutError: If server times out
             BadRequestError: 400 error - possibly due to error in payload
             ItemNotFoundError: 404 error - possibly due to adressing UUID that does not exist
+            UnprocessableContentError: 422 error - request cannot be performed
             RuntimeError: For HTTP errors not explicitly handled as named exceptions
         """
         if not payload:
