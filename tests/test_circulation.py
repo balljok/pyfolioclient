@@ -29,7 +29,7 @@ def test_loans():
         data = folio.get_loans(cql_query="status.name==Open")
         assert isinstance(data, list)
 
-        # Get all loans using generator/iterator
+        # Get all open loans using generator/iterator
         for item in folio.iter_loans(cql_query="status.name==Open"):
             assert isinstance(item, dict)
 
@@ -52,3 +52,16 @@ def test_loans():
         # Test invalid date
         with raises(ValueError):
             folio.get_open_loans_by_due_date(start="2025-02-31")
+
+
+@pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Test doesn't work in Github Actions")
+def test_requests():
+    """Test fetching requests"""
+    with FolioClient(FOLIO_BASE_URL, FOLIO_TENANT, FOLIO_USER, FOLIO_PASSWORD) as folio:
+        # Get requests
+        data = folio.get_requests(cql_query="status=Open")
+        assert isinstance(data, list)
+
+        # Get all open requests using generator/iterator
+        for item in folio.iter_requests(cql_query="status=Open"):
+            assert isinstance(item, dict)
