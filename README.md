@@ -42,7 +42,7 @@ Features:
 
 ### FolioClient
 
-Extends FolioBaseClient and provides useful methods for common operations in FOLIO. Provided for convencience. Focus on:
+Extends FolioBaseClient and provides useful methods for common operations in FOLIO. Provided for convencience. It contains convenience methods for:
 
 - Users
 - Inventory
@@ -80,6 +80,16 @@ with FolioClient(base_url, tenant, user, password) as folio:
     except ItemNotFoundError as err:
         print("No matching user")
 ```
+
+## A note on custom exceptions
+
+A number of custom exceptions have been implemented:
+
+- BadRequestError (HTTP status code 400)
+- ItemNotFoundError (HTTP status code 404)
+- UnprocessableContentError (HTTP status code 422)
+
+Through experience we have found these useful to be able to handle explicitly and separately, rather than being raised as a general HTTP error. 
 
 ## FOLIO API Notes
 
