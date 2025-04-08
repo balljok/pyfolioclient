@@ -468,10 +468,22 @@ class FolioClient(FolioBaseClient):
             self.iter_data("/loan-storage/loans", key="loans", cql_query=cql_query)
         )
 
+    def get_loans_bl(self, cql_query: str = "") -> list:
+        """Get all loans. Query can be used to filter results. Uses business logic API."""
+        return list(
+            self.iter_data("/circulation/loans", key="loans", cql_query=cql_query)
+        )
+
     def iter_loans(self, cql_query: str = "") -> Generator:
         """Get all loans, yielding results one by one"""
         yield from self.iter_data(
             "/loan-storage/loans", key="loans", cql_query=cql_query
+        )
+
+    def iter_loans_bl(self, cql_query: str = "") -> Generator:
+        """Get all loans, yielding results one by one. Uses business logic API."""
+        yield from self.iter_data(
+            "/circulation/loans", key="loans", cql_query=cql_query
         )
 
     def get_open_loans_by_due_date(self, start: str, end: str | None = None) -> list:
@@ -508,6 +520,41 @@ class FolioClient(FolioBaseClient):
             self.iter_data("/loan-storage/loans", key="loans", cql_query=cql_query)
         )
 
+    def get_open_loans_by_due_date_bl(self, start: str, end: str | None = None) -> list:
+        """Get loans with a given due date. Suppors both intervals and single dates.
+        Uses business logic API.
+
+        Args:
+            start (str): Start date for interval or single date. Format: "YYYY-MM-DD"
+            end (str | None, optional): End date for interval. Format: "YYYY-MM-DD".
+
+        Raises:
+            ValueError: Invalid date format
+            ValueError: Start date cannot be after end date
+
+        Returns:
+            list: Loans with a given due date or within a given interval
+        """
+        try:
+            datetime.strptime(start, "%Y-%m-%d")
+            if end:
+                datetime.strptime(end, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("Invalid date format") from exc
+        if end and start > end:
+            raise ValueError("Start date cannot be after end date")
+        if end:
+            cql_query = (
+                f"(((dueDate>{start} and dueDate<{end}) "
+                f"or dueDate={start} or dueDate={end}) "
+                "and status.name==Open)"
+            )
+        else:
+            cql_query = f"dueDate={start} and status.name==Open"
+        return list(
+            self.iter_data("/circulation/loans", key="loans", cql_query=cql_query)
+        )
+
     def iter_open_loans_by_due_date(
         self, start: str, end: str | None = None
     ) -> Generator:
@@ -542,6 +589,43 @@ class FolioClient(FolioBaseClient):
             cql_query = f"dueDate={start} and status.name==Open"
         yield from self.iter_data(
             "/loan-storage/loans", key="loans", cql_query=cql_query
+        )
+
+    def iter_open_loans_by_due_date_bl(
+        self, start: str, end: str | None = None
+    ) -> Generator:
+        """Yield loans with a given due date. Suppors both intervals and single dates.
+        Uses business logic API.
+
+        Args:
+            start (str): Start date for interval or single date. Format: "YYYY-MM-DD"
+            end (str | None, optional): End date for interval. Format: "YYYY-MM-DD".
+
+        Raises:
+            ValueError: Invalid date format
+            ValueError: Start date cannot be after end date
+
+        Yields:
+            Generator: Yields one matched loan at a time
+        """
+        try:
+            datetime.strptime(start, "%Y-%m-%d")
+            if end:
+                datetime.strptime(end, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("Invalid date format") from exc
+        if end and start > end:
+            raise ValueError("Start date cannot be after end")
+        if end:
+            cql_query = (
+                f"(((dueDate>{start} and dueDate<{end}) "
+                f"or dueDate={start} or dueDate={end}) "
+                "and status.name==Open)"
+            )
+        else:
+            cql_query = f"dueDate={start} and status.name==Open"
+        yield from self.iter_data(
+            "/circulation/loans", key="loans", cql_query=cql_query
         )
 
     def renew_loan_by_barcode(self, item_barcode: str, user_barcode: str) -> dict:
