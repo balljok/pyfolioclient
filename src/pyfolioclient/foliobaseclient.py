@@ -359,8 +359,18 @@ class FolioBaseClient:
         self._manage_token()
         url = f"{self._base_url}{endpoint}"
         if content:
+            self.client.headers.update(
+                {
+                    "Content-Type": "application/octet-stream",
+                }
+            )
             response = self.client.post(
                 url, content=content, params=params, timeout=self.timeout
+            )
+            self.client.headers.update(
+                {
+                    "Content-Type": "application/json",
+                }
             )
         else:
             response = self.client.post(
