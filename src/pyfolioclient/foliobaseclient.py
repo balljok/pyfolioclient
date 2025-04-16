@@ -337,14 +337,14 @@ class FolioBaseClient:
         self,
         endpoint: str,
         payload: dict | None = None,
-        files: dict | None = None,
         params: dict | None = None,
+        content: bytes | None = None,
     ) -> dict | int:
         """Posts data to a FOLIO endpoint.
         Args:
             endpoint (str): The API endpoint to post to
             payload (dict, optional): The data payload to send in the request body
-            files (dict, optional): Files to upload (e.g. data import)
+            content (bytes, optional): Raw content to send in the request body (byte data)
             params (dict, optional): Parameters to include in the request.
         Returns:
             Union[dict, int]: The JSON response from the API if successful and response is JSON,
@@ -358,9 +358,14 @@ class FolioBaseClient:
         """
         self._manage_token()
         url = f"{self._base_url}{endpoint}"
-        response = self.client.post(
-            url, json=payload, files=files, params=params, timeout=self.timeout
-        )
+        if content:
+            response = self.client.post(
+                url, content=content, params=params, timeout=self.timeout
+            )
+        else:
+            response = self.client.post(
+                url, json=payload, params=params, timeout=self.timeout
+            )
         response.raise_for_status()
         try:
             return response.json()
