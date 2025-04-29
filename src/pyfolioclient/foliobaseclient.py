@@ -273,7 +273,10 @@ class FolioBaseClient:
             params.update({"limit": str(limit)})
         response = self.client.get(url, params=params, timeout=self.timeout)
         response.raise_for_status()
-        return response.json()[key] if key else response.json()
+        try:
+            return response.json()[key] if key else response.json()
+        except KeyError:
+            return []
 
     def iter_data(
         self,
